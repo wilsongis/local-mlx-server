@@ -35,22 +35,7 @@ For runtime operations (server lifecycle, status checks, and model profile selec
 - Keep operational workflows reproducible and scriptable through `justfile` recipes.
 - Treat `just` as the stable API that future external tools or UIs can call.
 
-## 3. Repository Boundary (Strict)
-
-This repository is an isolated infrastructure hub, not a full-stack application workspace.
-
-Agents must keep it as a pure, lightweight inference server and must not introduce standard app-stack components in this directory.
-
-Explicitly prohibited here:
-
-- FastAPI application feature development
-- HTMX page or UI integration
-- PostGIS schema or spatial app logic
-- General product web stack expansion
-
-If a request requires app-level work, route it to the appropriate application repository.
-
-## 4. Technical Focus Rules
+## 3. Technical Focus Rules
 
 Prioritize changes that improve local 120B+ serving viability on Apple Silicon memory-constrained systems.
 
@@ -63,7 +48,7 @@ Primary technical priorities:
 - Compatibility with uv-managed environments
 - OpenAI-compatible endpoint reliability through mlx_lm.server
 
-## 5. Change Discipline
+## 4. Change Discipline
 
 When making changes:
 
@@ -75,7 +60,7 @@ When making changes:
 - When introducing new operational actions, add or update `just` recipes first instead of adding manual command instructions.
 - If a web UI is requested, keep it in a separate repository or directory boundary and have it call this repo's `just` commands.
 
-## 6. Definition of Done for Agent Tasks
+## 5. Definition of Done for Agent Tasks
 
 A task is complete only when:
 
@@ -83,3 +68,10 @@ A task is complete only when:
 - It uses /speckit.* command structure where commands are involved.
 - It does not introduce forbidden full-stack components.
 - It preserves or improves local inference operability for the intended large-model workload.
+
+## Related Documentation
+
+- [README](README.md) - Project overview and navigation index
+- [Operations Guide](OPERATIONS.md) - Server operations and `just` recipes
+- [Governance](GOVERNANCE.md) - Project constitution, repository boundaries, and completion criteria
+- [Contributing](CONTRIBUTING.md) - Contribution guidelines and development workflow
