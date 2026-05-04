@@ -1,3 +1,27 @@
+<!--
+## Sync Impact Report
+
+**Version change**: 2.0.0 → 2.0.0 (no change - constitution already current)
+
+**Modified principles**: None
+
+**Added sections**: None
+
+**Removed sections**: None
+
+**Templates requiring updates**:
+- ✅ `.specify/templates/plan-template.md` - Constitution Check section present (line 30-34)
+- ✅ `.specify/templates/spec-template.md` - No constitution-specific sections found (generic template)
+- ✅ `.specify/templates/tasks-template.md` - No principle-driven task types required (generic template)
+- ✅ Command files - No `.specify/templates/commands/` directory exists
+
+**Follow-up TODOs**: None
+
+**Verification date**: 2026-05-04
+
+**Notes**: Constitution already fully populated with 5 principles aligned to AGENTS.md and README. No placeholders remain. All governance dates present. Version 2.0.0 ratified 2026-03-06, last amended 2026-05-04.
+-->
+
 # Local MLX Server Constitution
 
 ## Core Principles
