@@ -1,13 +1,11 @@
 [project]
-name = "genesis"
+name = "local-mlx-server"
 version = "0.1.0"
-description = "Genesis Environment"
+description = "Local Apple Silicon MLX inference infrastructure"
 requires-python = ">=3.10"
 dependencies = [
-    "fastapi[standard]",
-    "sqlalchemy[asyncio]",
-    "psycopg2-binary",
-    "geoalchemy2",
+    "mlx-lm>=0.31.3",
     "pytest",
-    "mempalace>=3.3.1",
+    "ruff",
+    "turboquant-mlx-full>=0.1.6",
 ]

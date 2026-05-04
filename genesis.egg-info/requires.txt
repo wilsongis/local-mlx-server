@@ -1,5 +1,0 @@
-fastapi[standard]
-sqlalchemy[asyncio]
-psycopg2-binary
-geoalchemy2
-pytest

@@ -5,18 +5,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.DS_Store
 
-# -------------------------------------------------------------
-# AI Agent Constraints (Genesis Template)
-# -------------------------------------------------------------
-# We COMMIT the following architecture to the template:
-# !.specify/ (The Spec Kit Configuration)
-# !.specify/memory/constitution.md (The Genesis Rules)
-# !specs/ (The feature specifications)
-# !.gemini/commands/, !.claude/commands/, etc. (The Agent tooling rules)
+# Local model/data artifacts
+models/
+*.safetensors
+*.gguf
+*.bin
 
-# However, we must IGNORE the agents' personal execution logs, 
-# token configurations, and history so students get a clean slate.
+# Agent-local execution artifacts
 .claude/history/
 .claude/mcp.json
 .gemini/logs/
@@ -24,10 +21,3 @@ __pycache__/
 .gemini/history/
 .opencode/history/
 .cursorrules
-
-# MacOS artifacts
-.DS_Store
-
-# MemPalace per-project files (issue #185)
-mempalace.yaml
-entities.json

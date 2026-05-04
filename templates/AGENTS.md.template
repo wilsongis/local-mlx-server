@@ -1,48 +1,85 @@
-# AGENTS.md: [Project Name]
+# AGENTS.md: Local MLX Server Operations Charter
 
-## 1. Project Identity
-**Objective:** [Describe the project's purpose here]
-**Status:** Verified
+## 1. Agent Purpose
 
-## 2. Research & Grounding
-- **Notebook Name:** "Project Genesis Master Research"
-- **Notebook ID:** `1a2b3c4d-5e6f-7g8h-your-unique-id-here`
-- **MCP Provider:** AntiGravity / notebooklm-mcp
-- **Local Source Sync:** `/docs/research/`
-- **Primary (Dev):** `just research-sync`
-- **Secondary (Prod):** `just notebook=prod research-sync`
+You are operating inside a dedicated local inference infrastructure repository.
 
-**Rule:** Always use the Dev notebook for experimental features. Only sync to Prod when the `SRS` (Software Requirements Specification) is finalized.
+Your job is to maintain and improve this server layer only:
 
-## 3. Global Tech Stack (The Standard)
-- **Backend:** FastAPI (Python)
-- **Frontend:** Jinja2 + HTMX + Tailwind
-- **Automation:** Just + UV
-- **MCP Tools:** NotebookLM-MCP
+- Maintain local server startup and health-check workflows.
+- Optimize inference arguments for memory, latency, and output stability.
+- Manage MLX and TurboQuant dependency updates with minimal disruption.
+- Preserve OpenAI-compatible local API serving behavior via mlx_lm.server.
 
-## 4. The Agent Memory Protocol
-**Read-Execute-Write Memory Protocol:**
-1. **READ**: Always read `AGENTS.md` and the `.specify/memory/constitution.md` before starting a task to gain context.
-2. **SPECIFY**: Define the feature, plan, and break it into actionable tasks using `/speckit` commands.
-3. **EXECUTE**: Work on the objective step-by-step according to the Global Tech Stack and Spec-Driven plan.
-4. **WRITE**: Update the `AGENTS.md` with current status and new knowledge before ending the task.
+## 2. Command Standard (Mandatory)
 
-## 5. Critical Commands (The Justfile Bridge)
+All spec-driven development and system commands in this repository must use the hardened speckit command namespace.
 
-| Command | Action | Platform | Description |
-| :--- | :--- | :--- | :--- |
-| `just start` | **Container Start** | Universal | Builds if missing and starts the Podman container. |
-| `just run` | **Native Start** | Universal | Runs FastAPI via `uv` for rapid development. |
-| `just research-sync` | **Sync Knowledge** | Universal | Pushes `/docs/research` to NotebookLM. |
-| `just lint` | **Clean Code** | Universal | Runs Ruff for standards enforcement. |
-| `/speckit.specify` | **Create Spec** | AI Agent | Defines a new feature requirements spec. |
-| `/speckit.plan` | **Create Plan** | AI Agent | Creates technical implementation plan based on the spec. |
-| `/speckit.tasks` | **Create Tasks** | AI Agent | Breaks plan into independent executing tasks. |
+Required prefix:
 
-## 5. Active Context & Todo
-- [x] Initialize repository from Genesis template
-- [ ] Connect NotebookLM ID
-- [x] Define initial SRS (Software Requirements Specification)
+- /speckit.*
 
----
-⏱️ **State:** Verified | 🧠 **Memory:** Fresh | 🛠️ **Platform:** Universal
+Examples:
+
+- /speckit.specify
+- /speckit.plan
+- /speckit.tasks
+- /speckit.implement
+- /speckit.verify
+
+Do not use alternate command namespaces for planning, tasking, implementation, or verification inside this repository.
+
+For runtime operations (server lifecycle, status checks, and model profile selection), use the `just` command bridge as the primary control interface.
+
+- Prefer `just <command>` over ad-hoc direct shell invocations.
+- Keep operational workflows reproducible and scriptable through `justfile` recipes.
+- Treat `just` as the stable API that future external tools or UIs can call.
+
+## 3. Repository Boundary (Strict)
+
+This repository is an isolated infrastructure hub, not a full-stack application workspace.
+
+Agents must keep it as a pure, lightweight inference server and must not introduce standard app-stack components in this directory.
+
+Explicitly prohibited here:
+
+- FastAPI application feature development
+- HTMX page or UI integration
+- PostGIS schema or spatial app logic
+- General product web stack expansion
+
+If a request requires app-level work, route it to the appropriate application repository.
+
+## 4. Technical Focus Rules
+
+Prioritize changes that improve local 120B+ serving viability on Apple Silicon memory-constrained systems.
+
+Primary technical priorities:
+
+- Weight compression integration health
+- Per-path hybrid quantization configuration support
+- KV cache compression behavior and stability
+- Server runtime flags and argument presets
+- Compatibility with uv-managed environments
+- OpenAI-compatible endpoint reliability through mlx_lm.server
+
+## 5. Change Discipline
+
+When making changes:
+
+- Keep the server surface minimal.
+- Prefer reversible, testable edits.
+- Avoid architecture drift toward product code.
+- Document operational rationale for inference-related parameter changes.
+- Validate that startup and serving flows remain functional after dependency updates.
+- When introducing new operational actions, add or update `just` recipes first instead of adding manual command instructions.
+- If a web UI is requested, keep it in a separate repository or directory boundary and have it call this repo's `just` commands.
+
+## 6. Definition of Done for Agent Tasks
+
+A task is complete only when:
+
+- It stays within infrastructure-only scope.
+- It uses /speckit.* command structure where commands are involved.
+- It does not introduce forbidden full-stack components.
+- It preserves or improves local inference operability for the intended large-model workload.
