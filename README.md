@@ -71,13 +71,48 @@ The infrastructure goal is explicit:
 
 This repository is not intended to become an application monolith. It is the model-serving backbone.
 
+## Security Configuration
+
+The Local MLX Server includes security hardening options for local inference infrastructure. Key security features:
+
+### Network Security
+- **Default localhost-only**: Server binds to `127.0.0.1` by default
+- **Network binding control**: Use `ALLOW_NETWORK_BINDING` environment variable (default: `false`)
+- **Warning**: Only enable network binding with additional security measures in place
+
+### Model Path Security
+- **Authorized directories**: Restrict model loading to `AUTHORIZED_MODEL_DIRS`
+- **Path traversal protection**: Rejects `../` and `..\\` patterns
+- **Fail-closed**: Invalid paths return 403 Forbidden
+
+### Environment Variable Protection
+- **Sensitive data redaction**: Enable `REDACT_SENSITIVE_VARS=true` to prevent exposure in logs
+- **File permissions**: Set `.env` file to mode 600 (`chmod 600 .env`)
+
+### Endpoint Hardening
+- **Disable non-essential endpoints**: Use `DISABLE_HEALTH_ENDPOINT`, `DISABLE_METRICS_ENDPOINT`, `DISABLE_MODELS_ENDPOINT`
+- **Input validation**: JSON schema validation, prompt length limits (4096 chars), content-type enforcement
+
+### Security Validation
+
+Run the security check recipe:
+
+```bash
+just security-check
+```
+
+For detailed security documentation, see:
+- [Operations Guide - Security Section](OPERATIONS.md#security-operations)
+- [Security Validation Guide](docs/security-validation.md)
+- [API Endpoint Contracts](specs/002-security-implementation/contracts/api-endpoints.md)
+
 ## Scope and Non-Goals
 
 **In scope**:
 
 - Reproducible local server startup and operational scripts.
 - MLX and TurboQuant integration updates.
-- Inference argument tuning for memory, latency, and quality tradeoffs.
+- Inference arguments tuning for memory, latency, and quality tradeoffs.
 - Stable OpenAI-compatible local API behavior.
 
 **Out of scope**:

@@ -65,3 +65,11 @@ test:
 # Verify standard: run linters, formatters, and tests
 verify: lint test
     @echo "Verification complete."
+
+# ------------------------------------------------------------------------------
+# 3. SECURITY
+# ------------------------------------------------------------------------------
+
+# Validate security configuration
+security-check:
+    @bash scripts/security-check.sh

@@ -179,13 +179,63 @@ When contributing documentation:
 - Update table of contents if adding new sections
 - Verify internal links work correctly
 
-## Code of Conduct
+## Security Guidelines for Contributors
+
+When contributing to this infrastructure project, follow these security guidelines:
+
+### Environment Variable Security
+
+- **Never commit `.env` files** - they are in `.gitignore` for a reason
+- **Use `.env.example`** - Document all new environment variables with examples
+- **Sensitive patterns** - Any variable matching `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_CREDENTIAL*` must be treated as sensitive
+- **Redaction** - When adding logging, use `REDACT_SENSITIVE_VARS=true` pattern to prevent exposure
+
+### Model Path Security
+
+- **Authorized directories only** - All model paths must be within `AUTHORIZED_MODEL_DIRS`
+- **Path traversal prevention** - Reject any path containing `../` or `..\\`
+- **Symlink safety** - Resolve symlinks before validation (use `Path.resolve()`)
+- **Fail-closed** - Invalid paths must return 403 Forbidden, not expose error details
+
+### Network Security
+
+- **Default localhost-only** - New features should bind to `127.0.0.1` by default
+- **Network binding control** - Use `ALLOW_NETWORK_BINDING` environment variable
+- **Warning for network exposure** - Document security implications if binding to `0.0.0.0`
+
+### API Input Validation
+
+- **Content-Type validation** - Require `application/json` for all API endpoints
+- **Length limits** - Enforce maximum prompt length (4096 chars for this project)
+- **Character filtering** - Reject shell metacharacters (`` ` ``, `$()`, `${}`, `|`, `;`, `&&`, `||`)
+- **JSON schema validation** - Use Pydantic models for request validation
+
+### Endpoint Security
+
+- **Disable by default** - New non-essential endpoints should be disabled by default
+- **Environment control** - Use `DISABLE_*` environment variables for endpoint control
+- **Information disclosure** - Be careful about what error messages reveal
+
+### Code of Conduct
 
 - Be respectful and inclusive in all interactions
 - Focus on infrastructure-only scope (see [AGENTS.md](AGENTS.md))
 - Prioritize memory optimization and serving reliability
 - Document operational rationale for inference-related changes
 - Use `just` recipes for operational workflows
+
+## Security Checklist for Contributors
+
+Before submitting a PR, verify:
+
+- [ ] No sensitive data in logs (use redaction patterns)
+- [ ] Model paths validated against `AUTHORIZED_MODEL_DIRS`
+- [ ] Input validation for API endpoints (length, content-type, characters)
+- [ ] New endpoints have `DISABLE_*` environment variable control
+- [ ] Network binding defaults to localhost (`127.0.0.1`)
+- [ ] `.env` file not committed (check `.gitignore`)
+- [ ] Security documentation updated (if adding security-related features)
+- [ ] `just security-check` passes (if security-related changes)
 
 ## Getting Help
 
@@ -200,3 +250,5 @@ When contributing documentation:
 - [Operations Guide](OPERATIONS.md) - Server operations and `just` recipes
 - [Agent Rules](AGENTS.md) - Operational charter for AI agents
 - [Governance](GOVERNANCE.md) - Project constitution and documentation standards
+- [Security Validation Guide](docs/security-validation.md) - Security patterns and helpers
+- [API Endpoint Contracts](specs/002-security-implementation/contracts/api-endpoints.md) - Security contracts

@@ -18,6 +18,7 @@ The `just` command bridge is the primary control interface for all operational w
 | `just status` | Check server health and status |
 | `just lint` | Run code linting (RUFF) |
 | `just test` | Run test suite |
+| `just security-check` | Validate security configuration |
 
 ### Planned Commands (Coming Soon)
 
@@ -96,6 +97,143 @@ just model-use nemotron-120b-q2
 # View current active profile
 just model-use
 ```
+
+## Security Operations
+
+### Security Configuration
+
+The Local MLX Server includes security hardening options configured via environment variables in `.env` (see `.env.example` for reference).
+
+#### Network Security
+
+By default, the server binds to `127.0.0.1` (localhost only) to prevent network access:
+
+```bash
+# .env - Localhost only (default, secure)
+MLX_SERVER_HOST="127.0.0.1"
+ALLOW_NETWORK_BINDING=false
+
+# .env - Allow network binding (use with caution)
+ALLOW_NETWORK_BINDING=true
+MLX_SERVER_HOST="0.0.0.0"  # Binds to all interfaces
+```
+
+**Warning**: Enabling network binding exposes the server beyond localhost. Ensure additional network security measures are in place.
+
+#### Model Path Security
+
+Restrict model loading to authorized directories:
+
+```bash
+# .env - Colon-separated list of authorized directories
+AUTHORIZED_MODEL_DIRS="./models:/path/to/other/authorized/models"
+```
+
+The server validates that all model paths resolve within authorized directories. Path traversal attempts (e.g., `../`) are rejected.
+
+#### Environment Variable Protection
+
+Prevent sensitive data exposure in logs and error messages:
+
+```bash
+# .env - Enable redaction of sensitive variables
+REDACT_SENSITIVE_VARS=true
+```
+
+Sensitive patterns include: `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_CREDENTIAL*`, `MLX_MODEL_PATH`, `AUTHORIZED_MODEL_DIRS`.
+
+#### Endpoint Hardening
+
+Disable non-essential endpoints for production deployments:
+
+```bash
+# .env - Disable specific endpoints
+DISABLE_HEALTH_ENDPOINT=true
+DISABLE_METRICS_ENDPOINT=true
+DISABLE_MODELS_ENDPOINT=true
+```
+
+### Security Validation
+
+Use the `just` recipe to validate security configuration:
+
+```bash
+# Run security check
+just security-check
+```
+
+Expected output:
+```
+Running security configuration check...
+Checking .env.example...
+Security check passed.
+```
+
+The `security-check` recipe verifies:
+- `ALLOW_NETWORK_BINDING=false` in `.env.example`
+- `MLX_SERVER_HOST="127.0.0.1"` in `.env.example`
+- `REDACT_SENSITIVE_VARS=true` is set
+- `AUTHORIZED_MODEL_DIRS` is configured
+- `.env` file permissions (should be 600)
+
+### API Endpoint Security
+
+#### Input Validation
+
+All API inputs are validated for:
+- JSON schema compliance
+- Prompt length limits (max 4096 characters)
+- Rejection of shell metacharacters and path traversal sequences (`../`, `..\\`)
+- Content-type validation (`application/json` required)
+
+#### Authentication
+
+The server is designed for localhost-only operation by default. For network-accessible deployments:
+- Use reverse proxy with authentication (nginx, Caddy)
+- Consider API gateway with rate limiting
+- Implement mTLS for service-to-service communication
+
+#### Rate Limiting
+
+For production deployments, implement rate limiting at the reverse proxy level:
+
+```nginx
+# nginx example
+location /v1/ {
+    limit_req zone=mlx_server burst=10 nodelay;
+    proxy_pass http://127.0.0.1:8000;
+}
+```
+
+### Path Validation
+
+Model paths are validated using:
+1. **Resolution**: Convert to absolute path with symlink resolution
+2. **Prefix matching**: Ensure path starts with authorized directory
+3. **Traversal detection**: Reject paths containing `../` or `..\\`
+4. **Fail-closed**: Invalid paths return 403 Forbidden
+
+### Environment File Security
+
+Secure your `.env` file:
+
+```bash
+# Set restrictive permissions (macOS/Linux)
+chmod 600 .env
+
+# Verify permissions
+ls -la .env
+# Should show: -rw------- (600)
+```
+
+**Warning**: Never commit `.env` to version control. It's already in `.gitignore`.
+
+### Security Documentation
+
+For detailed security validation patterns and helper functions, see:
+- [Security Validation Guide](docs/security-validation.md)
+- [API Endpoint Contracts](specs/002-security-implementation/contracts/api-endpoints.md)
+- [Security Quickstart](specs/002-security-implementation/quickstart.md)
 
 ## Troubleshooting
 
