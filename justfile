@@ -66,6 +66,19 @@ test:
 verify: lint test
     @echo "Verification complete."
 
+# Health check for local MLX server environment
+doctor:
+    @echo "Running health checks..."
+    @echo "Checking uv installation..."
+    uv --version || (echo "uv not found. Install from https://docs.astral.sh/uv/getting-started/installation/" && exit 1)
+    @echo "Checking mlx_lm availability..."
+    uv run python -c "import mlx_lm; print(f'mlx_lm version: {mlx_lm.__version__}')" || (echo "mlx_lm not found. Run 'just init' to install." && exit 1)
+    @echo "Checking model path ({{MODEL_PATH}})..."
+    [ -d "{{MODEL_PATH}}" ] || (echo "Model path {{MODEL_PATH}} not found. Set MODEL_PATH or create the directory." && exit 1)
+    @echo "Checking default port {{PORT}}..."
+    lsof -i :{{PORT}} >/dev/null 2>&1 && echo "Warning: Port {{PORT}} is in use." || echo "Port {{PORT}} is free."
+    @echo "Health check complete."
+
 # ------------------------------------------------------------------------------
 # 3. SECURITY
 # ------------------------------------------------------------------------------

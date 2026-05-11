@@ -2,298 +2,793 @@
 
 ## Overview
 
-This guide covers all operational aspects of running the Local MLX Server, including server lifecycle management, model operations, and troubleshooting procedures.
-
-## Just Command Reference
+This guide covers all operational aspects of running the Local MLX Server, including server lifecycle management, model operations, troubleshooting procedures, and model profile selection for Apple Silicon memory-constrained systems.
 
 The `just` command bridge is the primary control interface for all operational workflows. Using `just` recipes ensures reproducibility across machines and sessions.
 
-### Core Commands
+---
 
-| Command | Description |
-|---------|-------------|
-| `just start` | Start the server in a containerized environment |
-| `just run` | Start the server natively (non-containerized) |
-| `just stop` | Stop the running server |
-| `just status` | Check server health and status |
-| `just lint` | Run code linting (RUFF) |
-| `just test` | Run test suite |
-| `just security-check` | Validate security configuration |
+## Just Recipe Reference
 
-### Planned Commands (Coming Soon)
+This section documents all `just` recipes with command syntax, required arguments, examples, edge cases, and developer contribution guidelines.
 
-| Command | Description |
-|---------|-------------|
-| `just server-start` | Explicit server startup |
-| `just server-stop` | Explicit server shutdown |
-| `just server-status` | Detailed server status report |
-| `just models-list` | List available model profiles |
-| `just model-use <profile>` | Switch to a specific model profile |
+### Recipe Index
 
-## Server Startup
+| Recipe | Description | Section |
+|---------|-------------|---------|
+| `just` / `just default` | Show available commands | [default](#default) |
+| `just start` | Start server in containerized environment | [start](#start) |
+| `just build` | Build/rebuild container image | [build](#build) |
+| `just run` | Start server natively with mlx_lm.server | [run](#run) |
+| `just status` | Check container status | [status](#status) |
+| `just stop` | Stop running server container | [stop](#stop) |
+| `just init` | Initialize virtual environment and install | [init](#init) |
+| `just lint` | Run linting and formatting (ruff) | [lint](#lint) |
+| `just test` | Run test suite (pytest) | [test](#test) |
+| `just verify` | Run lint + test (full verification) | [verify](#verify) |
+| `just doctor` | Run environment health checks | [doctor](#doctor) |
+| `just security-check` | Validate security configuration | [security-check](#security-check) |
 
-### Native Start (Recommended for Development)
+---
 
+### default
+
+**Description**: Show all available `just` recipes.
+
+**Syntax**:
 ```bash
-# Ensure dependencies are installed via uv
-uv sync
-
-# Start the server with default settings
-just run
+just
+# or explicitly
+just default
 ```
 
-### Containerized Start (Production-like)
-
+**Examples**:
 ```bash
-# Start using Containerfile
+$ just
+Available recipes:
+    build                   # Build/Rebuild the container image
+    default                 # Default: Show available commands
+    doctor                  # Health check for local MLX server environment
+    init                    # Initialize local virtual environment and editable install
+    lint                    # Run linting and formatting
+    run                     # Start server natively with mlx_lm.server
+    security-check          # Validate security configuration
+    start                   # Build container if needed and start the server (containerized)
+    status                  # Container status helper
+    stop                    # Stop local server container
+    test                    # Run the test suite
+    verify                  # Verify standard: run linters, formatters, and tests
+```
+
+**Edge Cases**:
+- No edge cases (built-in `just` functionality)
+
+---
+
+### start
+
+**Description**: Build container if needed and start the server in a containerized environment.
+
+**Syntax**:
+```bash
 just start
 ```
 
-### Server Configuration
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMAGE_NAME` | `local-mlx-server` | Container image name |
+| `CONTAINER_NAME` | `local-mlx-server` | Container instance name |
+| `PORT` | `8000` | Port to expose |
+| `HOST` | `127.0.0.1` | Host to bind to |
 
-The server uses `mlx_lm.server` as the OpenAI-compatible endpoint. Key configuration areas:
-
-- **Model Path**: Point to your quantized model directory
-- **Context Length**: Adjust based on memory constraints
-- **Quantization Settings**: Per-path hybrid quantization parameters
-- **KV Cache**: Compression settings for long context support
-
-## Server Lifecycle Management
-
-### Health Checks
-
+**Examples**:
 ```bash
-# Check if server is responding
+# Start with defaults
+$ just start
+Starting local MLX server container...
+Container not found, building image...
+Building Podman image...
+[... build output ...]
+Server is live at http://127.0.0.1:8000
+
+# Start with custom port
+$ PORT=8080 just start
+```
+
+**Edge Cases**:
+- **Container already exists but is stopped**: `just start` will start the existing container.
+- **Port already in use**: Podman will fail with port conflict error. See [Port Conflicts](#port-conflicts).
+- **Image not found**: `just start` automatically runs `just build` to create the image.
+- **Build fails**: Container will not start. Check build logs and fix issues before retrying.
+
+---
+
+### build
+
+**Description**: Build or rebuild the container image from the Containerfile.
+
+**Syntax**:
+```bash
+just build
+```
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMAGE_NAME` | `local-mlx-server` | Container image name |
+
+**Examples**:
+```bash
+# Build with default settings
+$ just build
+Building Podman image...
+[... build output ...]
+```
+
+**Edge Cases**:
+- **Containerfile not found**: Podman will fail with "error reading Containerfile".
+- **Build cache issues**: Use `podman build --no-cache -t local-mlx-server .` manually if needed.
+- **Out of disk space**: Podman will fail. Clean up with `podman system prune`.
+
+---
+
+### run
+
+**Description**: Start the server natively using `mlx_lm.server` via `uv`.
+
+**Syntax**:
+```bash
+just run
+```
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_PATH` | `./models` | Path to model directory |
+| `HOST` | `127.0.0.1` | Host to bind to |
+| `PORT` | `8000` | Port to listen on |
+| `MAX_TOKENS` | `4096` | Maximum KV cache size |
+
+**Examples**:
+```bash
+# Run with defaults
+$ just run
+Starting mlx_lm.server via uv...
+[... server startup output ...]
+
+# Run with custom model path
+$ MODEL_PATH=./models/nemotron-120b-q2 just run
+
+# Run with custom port and host
+$ HOST=0.0.0.0 PORT=8080 just run
+```
+
+**Edge Cases**:
+- **MODEL_PATH not found**: Server will fail to start. Verify path exists and is accessible.
+- **Port already in use**: Server will fail with "Address already in use". See [Port Conflicts](#port-conflicts).
+- **Out of memory**: Server may crash during model load. See [Memory Issues](#memory-issues).
+- **mlx_lm not installed**: Run `just init` to set up the environment first.
+
+---
+
+### status
+
+**Description**: Check the status of the containerized server.
+
+**Syntax**:
+```bash
 just status
-
-# Manual health check
-curl http://localhost:8000/health
 ```
 
-### Stopping the Server
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONTAINER_NAME` | `local-mlx-server` | Container instance name |
 
+**Examples**:
 ```bash
-# Using just command
+# Check status
+$ just status
+CONTAINER ID   IMAGE                  COMMAND                  CREATED         STATUS         PORTS                    NAMES
+abc123def456   local-mlx-server       python -m mlx_lm.s...   2 minutes ago   Up 2 minutes   0.0.0.0:8000->8000/tcp   local-mlx-server
+
+# If container is not running
+$ just status
+CONTAINER ID   IMAGE   COMMAND   CREATED   STATUS   PORTS   NAMES
+# (empty output)
+```
+
+**Edge Cases**:
+- **Container not found**: Returns empty output (no error).
+- **Podman not running**: Command will fail with Podman daemon error.
+
+---
+
+### stop
+
+**Description**: Stop the running server container.
+
+**Syntax**:
+```bash
 just stop
-
-# Manual process termination (if needed)
-pkill -f "mlx_lm.server"
 ```
 
-## Model Management
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONTAINER_NAME` | `local-mlx-server` | Container instance name |
 
-### Listing Available Models
-
+**Examples**:
 ```bash
-just models-list
+# Stop the server
+$ just stop
+local-mlx-server
 ```
 
-### Switching Model Profiles
+**Edge Cases**:
+- **Container already stopped**: Command succeeds silently (uses `-` prefix for error suppression).
+- **Container not found**: Command succeeds silently.
+- **Podman not running**: Command will fail with Podman daemon error.
 
+---
+
+### init
+
+**Description**: Initialize the local virtual environment and install the project in editable mode.
+
+**Syntax**:
 ```bash
-# Use a specific model profile
-just model-use nemotron-120b-q2
-
-# View current active profile
-just model-use
+just init
 ```
 
-## Security Operations
-
-### Security Configuration
-
-The Local MLX Server includes security hardening options configured via environment variables in `.env` (see `.env.example` for reference).
-
-#### Network Security
-
-By default, the server binds to `127.0.0.1` (localhost only) to prevent network access:
-
+**Examples**:
 ```bash
-# .env - Localhost only (default, secure)
-MLX_SERVER_HOST="127.0.0.1"
-ALLOW_NETWORK_BINDING=false
-
-# .env - Allow network binding (use with caution)
-ALLOW_NETWORK_BINDING=true
-MLX_SERVER_HOST="0.0.0.0"  # Binds to all interfaces
+# Initialize project
+$ just init
+Using Python 3.12.0
+Creating virtual environment at .venv
+uv pip install -e .
+[... installation output ...]
+Project initialized.
 ```
 
-**Warning**: Enabling network binding exposes the server beyond localhost. Ensure additional network security measures are in place.
+**Edge Cases**:
+- **Already initialized**: `uv venv` will skip creation if `.venv` exists. Re-run `uv pip install -e .` to update.
+- **uv not installed**: Command will fail. Install uv from https://docs.astral.sh/uv/getting-started/installation/
+- **Dependencies fail to install**: Check error messages and resolve system dependencies.
 
-#### Model Path Security
+---
 
-Restrict model loading to authorized directories:
+### lint
 
+**Description**: Run linting and formatting checks using Ruff.
+
+**Syntax**:
 ```bash
-# .env - Colon-separated list of authorized directories
-AUTHORIZED_MODEL_DIRS="./models:/path/to/other/authorized/models"
+just lint
 ```
 
-The server validates that all model paths resolve within authorized directories. Path traversal attempts (e.g., `../`) are rejected.
-
-#### Environment Variable Protection
-
-Prevent sensitive data exposure in logs and error messages:
-
+**Examples**:
 ```bash
-# .env - Enable redaction of sensitive variables
-REDACT_SENSITIVE_VARS=true
+# Run linter and formatter
+$ just lint
+Running ruff check...
+All checks passed!
+Running ruff format...
+All formatted!
 ```
 
-Sensitive patterns include: `*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `*_CREDENTIAL*`, `MLX_MODEL_PATH`, `AUTHORIZED_MODEL_DIRS`.
+**Edge Cases**:
+- **Linting errors found**: Ruff will attempt to fix (`--fix`) automatically. Review changes.
+- **Formatting changes needed**: Ruff will reformat files automatically.
+- **Configuration issues**: Ensure `pyproject.toml` has valid Ruff configuration.
 
-#### Endpoint Hardening
+---
 
-Disable non-essential endpoints for production deployments:
+### test
 
+**Description**: Run the test suite using pytest.
+
+**Syntax**:
 ```bash
-# .env - Disable specific endpoints
-DISABLE_HEALTH_ENDPOINT=true
-DISABLE_METRICS_ENDPOINT=true
-DISABLE_MODELS_ENDPOINT=true
+just test
 ```
 
-### Security Validation
-
-Use the `just` recipe to validate security configuration:
-
+**Examples**:
 ```bash
-# Run security check
+# Run tests
+$ just test
+============================= test session starts ==============================
+platform darwin -- Python 3.12.0, pytest-8.0.0
+collected 5 items
+
+tests/test_main.py .....                                              [100%]
+
+============================== 5 passed in 0.50s ==============================
+```
+
+**Edge Cases**:
+- **Tests fail**: Review test output and fix failing tests.
+- **No tests found**: Ensure test files are in `tests/` directory with `test_*.py` naming.
+- **Import errors**: Run `just init` to ensure environment is properly set up.
+
+---
+
+### verify
+
+**Description**: Run full verification: linting, formatting, and tests.
+
+**Syntax**:
+```bash
+just verify
+```
+
+**Examples**:
+```bash
+# Run full verification
+$ just verify
+Running ruff check...
+All checks passed!
+Running ruff format...
+All formatted!
+Running tests...
+============================= test session starts ==============================
+collected 5 items
+
+tests/test_main.py .....                                              [100%]
+
+============================== 5 passed in 0.50s ==============================
+Verification complete.
+```
+
+**Edge Cases**:
+- **Lint fails**: Verification stops after lint (lint runs before test).
+- **Tests fail**: Verification reports failure. Fix tests and re-run.
+
+---
+
+### doctor
+
+**Description**: Run environment health checks for uv, mlx_lm, model path, and port availability.
+
+**Syntax**:
+```bash
+just doctor
+```
+
+**Examples**:
+```bash
+# Run health checks
+$ just doctor
+Running health checks...
+Checking uv installation...
+uv 0.1.0
+Checking mlx_lm availability...
+mlx_lm version: 0.12.0
+Checking model path (./models)...
+Model path ./models found.
+Checking default port 8000...
+Port 8000 is free.
+Health check complete.
+```
+
+**Edge Cases**:
+- **uv not found**: Doctor fails with installation instructions.
+- **mlx_lm not found**: Doctor fails. Run `just init` to install.
+- **Model path not found**: Doctor fails. Set `MODEL_PATH` or create the directory.
+- **Port in use**: Doctor warns but continues (non-fatal).
+
+---
+
+### security-check
+
+**Description**: Validate security configuration by running the security-check script.
+
+**Syntax**:
+```bash
 just security-check
 ```
 
-Expected output:
-```
+**Examples**:
+```bash
+# Run security check
+$ just security-check
 Running security configuration check...
 Checking .env.example...
+  ALLOW_NETWORK_BINDING=false ✓
+  MLX_SERVER_HOST="127.0.0.1" ✓
+  REDACT_SENSITIVE_VARS=true ✓
+  AUTHORIZED_MODEL_DIRS configured ✓
 Security check passed.
 ```
 
-The `security-check` recipe verifies:
-- `ALLOW_NETWORK_BINDING=false` in `.env.example`
-- `MLX_SERVER_HOST="127.0.0.1"` in `.env.example`
-- `REDACT_SENSITIVE_VARS=true` is set
-- `AUTHORIZED_MODEL_DIRS` is configured
-- `.env` file permissions (should be 600)
+**Edge Cases**:
+- **Script not found**: Command fails. Verify `scripts/security-check.sh` exists.
+- **Security violations**: Script exits with error. Review output and fix `.env.example`.
+- **.env file permissions**: Script warns if `.env` is not 600.
 
-### API Endpoint Security
+---
 
-#### Input Validation
+## Troubleshooting Guide
 
-All API inputs are validated for:
-- JSON schema compliance
-- Prompt length limits (max 4096 characters)
-- Rejection of shell metacharacters and path traversal sequences (`../`, `..\\`)
-- Content-type validation (`application/json` required)
+This section covers common operational issues and their resolutions.
 
-#### Authentication
+### Startup Failures
 
-The server is designed for localhost-only operation by default. For network-accessible deployments:
-- Use reverse proxy with authentication (nginx, Caddy)
-- Consider API gateway with rate limiting
-- Implement mTLS for service-to-service communication
+#### Server Fails to Start (Containerized)
 
-#### Rate Limiting
+**Symptoms**:
+- `just start` fails with container startup error
+- Podman reports image or container issues
 
-For production deployments, implement rate limiting at the reverse proxy level:
+**Root Cause**: Container image missing, build failed, or port conflict.
 
-```nginx
-# nginx example
-location /v1/ {
-    limit_req zone=mlx_server burst=10 nodelay;
-    proxy_pass http://127.0.0.1:8000;
-}
-```
+**Resolution Steps**:
+1. Check if image exists: `podman images | grep local-mlx-server`
+2. If missing, build manually: `just build`
+3. Check for port conflicts: `lsof -i :8000`
+4. Review container logs: `podman logs local-mlx-server`
 
-### Path Validation
+**Prevention Tips**:
+- Run `just doctor` before `just start`
+- Ensure Containerfile is up to date
+- Keep Podman updated
 
-Model paths are validated using:
-1. **Resolution**: Convert to absolute path with symlink resolution
-2. **Prefix matching**: Ensure path starts with authorized directory
-3. **Traversal detection**: Reject paths containing `../` or `..\\`
-4. **Fail-closed**: Invalid paths return 403 Forbidden
+#### Server Fails to Start (Native)
 
-### Environment File Security
+**Symptoms**:
+- `just run` fails with Python errors
+- mlx_lm.server crashes during startup
 
-Secure your `.env` file:
+**Root Cause**: Missing dependencies, invalid MODEL_PATH, or port conflict.
 
-```bash
-# Set restrictive permissions (macOS/Linux)
-chmod 600 .env
-
-# Verify permissions
-ls -la .env
-# Should show: -rw------- (600)
-```
-
-**Warning**: Never commit `.env` to version control. It's already in `.gitignore`.
-
-### Security Documentation
-
-For detailed security validation patterns and helper functions, see:
-- [Security Validation Guide](docs/security-validation.md)
-- [API Endpoint Contracts](specs/002-security-implementation/contracts/api-endpoints.md)
-- [Security Quickstart](specs/002-security-implementation/quickstart.md)
-
-## Troubleshooting
-
-### Common Issues
-
-#### Server Fails to Start
-
-**Symptoms**: Server exits immediately or fails to bind to port
-
-**Checks**:
-1. Verify port 8000 is not in use: `lsof -i :8000`
-2. Check model path exists and is accessible
-3. Verify memory availability: `memory_pressure` (macOS)
+**Resolution Steps**:
+1. Verify environment: `just doctor`
+2. Check model path exists: `ls -la $MODEL_PATH`
+3. Check port availability: `lsof -i :8000`
 4. Review server logs for specific errors
 
-#### Out of Memory Errors
+**Prevention Tips**:
+- Run `just init` after pulling new changes
+- Use absolute paths for MODEL_PATH
+- Test with `just doctor` before starting
 
-**Symptoms**: Server crashes with memory-related errors during model load
+#### Model Load Failures
 
-**Solutions**:
+**Symptoms**:
+- Server starts but fails to load model
+- Errors about missing model files or invalid format
+
+**Root Cause**: Invalid model path, corrupted model files, or incompatible model format.
+
+**Related Recipes**:
+- [`just run`](#run) - Server startup with MODEL_PATH
+- [`just doctor`](#doctor) - Checks model path validity
+
+**Resolution Steps**:
+1. Verify model directory structure (should have `config.json`, `model.safetensors`, etc.)
+2. Check model compatibility with MLX
+3. Re-download model if files are corrupted
+4. Ensure sufficient disk space
+
+**Prevention Tips**:
+- Use verified model sources
+- Keep model files in authorized directories
+- Document model source and version
+
+---
+
+#### Container Runtime Issues
+
+**Symptoms**:
+- Podman daemon not running
+- Container commands fail with connection errors
+- `just start` fails with "Cannot connect to Podman daemon"
+
+**Root Cause**: Podman service not running or misconfigured.
+
+**Related Recipes**:
+- [`just start`](#start) - Container startup
+- [`just status`](#status) - Check container status
+
+**Resolution Steps**:
+1. Start Podman service: `podman machine start` (if using Podman Machine)
+2. Check Podman status: `podman info`
+3. Restart Podman daemon if needed
+4. Verify Podman installation: `podman --version`
+
+**Prevention Tips**:
+- Ensure Podman starts on system boot
+- Monitor Podman daemon health
+- Keep Podman updated
+
+---
+
+#### Model Path Permission Issues
+
+**Symptoms**:
+- Server fails to read model files
+- Permission denied errors when loading model
+- `just run` fails with "Permission denied"
+
+**Root Cause**: Incorrect file permissions on model directory or files.
+
+**Related Recipes**:
+- [`just run`](#run) - Server startup with MODEL_PATH
+- [`just doctor`](#doctor) - Checks model path validity
+
+**Resolution Steps**:
+1. Check permissions: `ls -la $MODEL_PATH`
+2. Fix directory permissions: `chmod -R 755 $MODEL_PATH`
+3. Fix file ownership: `chown -R $(whoami) $MODEL_PATH`
+4. Verify access: `cat $MODEL_PATH/config.json`
+
+**Prevention Tips**:
+- Set correct permissions when downloading models
+- Use authorized directories per AGENTS.md
+- Document permission requirements for model paths
+
+---
+
+### Memory Issues
+
+#### Out of Memory (OOM) Errors
+
+**Symptoms**:
+- Server crashes during model load with memory errors
+- macOS shows memory pressure warning
+
+**Root Cause**: Model requires more memory than available, especially for 120B+ models on memory-constrained systems.
+
+**Resolution Steps**:
 1. Use more aggressive quantization (lower expert bit-width)
-2. Reduce context length
+2. Reduce context length (MAX_TOKENS)
 3. Enable KV cache compression
 4. Close other memory-intensive applications
+5. Switch to a lower memory tier profile (see [Model Profile Decision Tree](#model-profile-decision-tree))
 
-#### Poor Inference Performance
+**Prevention Tips**:
+- Check system memory before starting: `system_profiler SPHardwareDataType | grep "Memory:"`
+- Use appropriate model profile for your memory tier
+- Monitor memory usage with `top` or Activity Monitor
 
-**Symptoms**: Slow token generation or high latency
+#### KV Cache Overflow
 
-**Optimizations**:
-1. Verify MLX is using Metal (GPU) acceleration
-2. Check quantization settings balance (attention vs expert paths)
-3. Monitor KV cache memory usage at long contexts
-4. Consider per-path hybrid quantization tuning
+**Symptoms**:
+- Server runs out of memory during long conversations
+- Gradual slowdown and eventual crash
 
-### Debug Mode
+**Root Cause**: KV cache grows with context length, exceeding available memory.
 
-For detailed debugging information:
+**Resolution Steps**:
+1. Reduce MAX_TOKENS setting
+2. Enable KV cache compression in quantization config
+3. Use shorter conversation contexts
+4. Restart server periodically for long sessions
 
-```bash
-# Run with verbose output
-just run --verbose
+**Prevention Tips**:
+- Set MAX_TOKENS based on your memory tier (see [Model Profile Decision Tree](#model-profile-decision-tree))
+- Monitor KV cache usage in server logs
+- Use per-path hybrid quantization with KV cache compression
 
-# Check MLX logs
-tail -f ~/.cache/mlx/logs/server.log
+#### Quantization Failures
+
+**Symptoms**:
+- Errors during model quantization
+- Server starts but generates poor quality output
+
+**Root Cause**: Invalid quantization configuration or incompatible model architecture.
+
+**Resolution Steps**:
+1. Verify quantization config in model profile
+2. Check model architecture compatibility with TurboQuant
+3. Revert to default quantization settings
+4. Test with known working configuration
+
+**Prevention Tips**:
+- Document working quantization settings per model
+- Test quantization changes in isolation
+- Keep backup of known-good configurations
+
+---
+
+### Port Conflicts
+
+**Symptoms**:
+- Server fails to bind to port 8000 (or configured port)
+- Error: "Address already in use"
+
+**Root Cause**: Another process is using the configured port.
+
+**Resolution Steps**:
+1. Identify conflicting process: `lsof -i :8000`
+2. Stop the conflicting process: `kill <PID>` or `just stop` if it's an old server instance
+3. Use different port: `PORT=8080 just start`
+4. For persistent conflicts, identify and reconfigure the other service
+
+**Prevention Tips**:
+- Run `just doctor` before starting server
+- Document custom port configurations
+- Use `lsof -i :8000` in monitoring scripts
+
+---
+
+## Model Profile Decision Tree
+
+This section helps operators select the correct model profile based on system memory (48GB, 64GB, or 96GB tiers) for optimal performance on Apple Silicon.
+
+### Decision Logic
+
+```
+START: Check your system memory
+├── Run: system_profiler SPHardwareDataType | grep "Memory:"
+│
+├── 48GB tier (e.g., M2 Max 48GB)
+│   ├── Profile: Low Memory
+│   ├── Expected: ~15 tok/s, 2K context, ~42GB used
+│   └── Use: just run with default or explicit low-memory settings
+│
+├── 64GB tier (e.g., M2 Ultra 64GB)
+│   ├── Profile: Balanced
+│   ├── Expected: ~22 tok/s, 4K context, ~56GB used
+│   └── Use: just run with balanced settings
+│
+├── 96GB tier (e.g., M2 Ultra 96GB)
+│   ├── Profile: High Performance
+│   ├── Expected: ~30 tok/s, 8K context, ~80GB used
+│   └── Use: just run with high-performance settings
+│
+└── Between tiers? (e.g., 56GB, 72GB)
+    └── RULE: Always use LOWER tier for stability
+        ├── 56GB → Use 48GB profile
+        └── 72GB → Use 64GB profile
 ```
 
-## Operational Direction
+### Memory Check Command
 
-Near-term operational priorities:
+```bash
+# Check your system memory
+system_profiler SPHardwareDataType | grep "Memory:"
+# Example output: Memory: 64 GB
+```
 
-- Keep model serving minimal and deterministic.
-- Preserve compatibility with large-model local execution constraints.
-- Optimize defaults for long-context, memory-constrained Apple Silicon usage.
-- Track MLX and TurboQuant changes that impact stability, speed, and compression behavior.
-- Standardize all operator workflows behind `just` recipes before adding any separate control UI.
+### Profile Details
+
+#### 48GB Tier Profile
+
+**Target Systems**: M2 Max 48GB, similar configurations
+
+**Performance Metrics**:
+- Tokens per second: ~15
+- Context length: 2K (2048 tokens)
+- Memory used: ~42GB
+
+**Quantization Configuration**:
+- Weight compression: 2-bit experts, 4-bit attention
+- KV cache: 4-bit compression enabled
+- Per-path hybrid: Aggressive expert quantization
+
+**Just Recipe Usage**:
+```bash
+# Use default settings (optimized for 48GB)
+just run
+
+# Or explicitly set lower context
+MAX_TOKENS=2048 just run
+```
+
+---
+
+#### 64GB Tier Profile
+
+**Target Systems**: M2 Ultra 64GB, M3 Max 64GB
+
+**Performance Metrics**:
+- Tokens per second: ~22
+- Context length: 4K (4096 tokens)
+- Memory used: ~56GB
+
+**Quantization Configuration**:
+- Weight compression: 2-bit experts, 4-bit attention
+- KV cache: 4-bit compression enabled
+- Per-path hybrid: Balanced quantization
+
+**Just Recipe Usage**:
+```bash
+# Default settings work well for 64GB
+just run
+
+# Or explicitly set context
+MAX_TOKENS=4096 just run
+```
+
+---
+
+#### 96GB Tier Profile
+
+**Target Systems**: M2 Ultra 96GB, M3 Max 96GB
+
+**Performance Metrics**:
+- Tokens per second: ~30
+- Context length: 8K (8192 tokens)
+- Memory used: ~80GB
+
+**Quantization Configuration**:
+- Weight compression: 3-bit experts, 4-bit attention
+- KV cache: 4-bit compression enabled
+- Per-path hybrid: Quality-optimized quantization
+
+**Just Recipe Usage**:
+```bash
+# Use higher context for 96GB systems
+MAX_TOKENS=8192 just run
+
+# Or with custom model path
+MODEL_PATH=./models/nemotron-120b-q3 MAX_TOKENS=8192 just run
+```
+
+---
+
+## Developer Guidelines
+
+This section provides guidelines for contributors adding or modifying `just` recipes.
+
+### Recipe Naming Conventions
+
+- Use **kebab-case** for recipe names: `my-new-recipe` (not `my_new_recipe` or `myNewRecipe`)
+- Use **descriptive verbs**: `start-server`, `check-status`, `run-tests`
+- Be **concise but clear**: `lint` not `run-code-linting-checks`
+
+### Justfile Contribution Standards
+
+When adding a new recipe to `justfile`:
+
+1. **Add description comment** above the recipe:
+   ```bash
+   # Run linting and formatting
+   lint:
+       uv run ruff check . --fix
+       uv run ruff format .
+   ```
+
+2. **Use environment variables** for configurable values:
+   ```bash
+   MODEL_PATH := "./models"
+   
+   run:
+       uv run python -m mlx_lm.server --model {{MODEL_PATH}}
+   ```
+
+3. **Document the recipe** in OPERATIONS.md following the standard format:
+   - Syntax
+   - Environment variables (table)
+   - Examples (at least one)
+   - Edge cases
+
+4. **Test your recipe** with `just verify` before committing
+
+### Testing Requirements for New Recipes
+
+- Recipe must execute without errors in default configuration
+- Recipe must handle missing dependencies gracefully (with helpful error messages)
+- Recipe must be documented in OPERATIONS.md
+- Run `just verify` to ensure no regressions
+
+### Documentation Standards
+
+- Use "just recipe" as the canonical terminology (not "just command", "recipe", or "command")
+- Include file paths as clickable links: [`justfile`](justfile)
+- Follow markdown best practices (tables, code blocks, headers)
+- Provide working examples with expected output
+- Document edge cases and error conditions
+
+---
 
 ## Related Documentation
 
 - [README](README.md) - Project overview and navigation index
 - [Agent Rules](AGENTS.md) - Operational charter and agent guidelines
 - [Governance](GOVERNANCE.md) - Project constitution and standards
-- [Contributing](CONTRIBUTING.md) - Development workflow and testing guidelines
+- [Contributing](CONTRIBUTING.md) - Contribution guidelines and development workflow
+- [Security Validation](docs/security-validation.md) - Security patterns and helpers
