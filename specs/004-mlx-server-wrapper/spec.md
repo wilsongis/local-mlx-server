@@ -2,7 +2,7 @@
 
 **Feature Branch**: `004-mlx-server-wrapper`  
 **Created**: 2026-05-07  
-**Status**: Draft  
+**Status**: Complete
 **Input**: User description: "Create mlx_lm.server wrapper spec via `/speckit.specify` - Design startup/shutdown workflow with health checks, Implement model profile selection logic (per-path hybrid quantization support), Add startup argument presets for 120B+ model memory optimization"
 
 ## User Scenarios & Testing *(mandatory)*

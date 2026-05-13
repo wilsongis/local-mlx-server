@@ -30,7 +30,7 @@
 ## 🔧 Infrastructure & Server Specs
 
 ### Core Server Infrastructure
-- [ ] **INFRA-001**: Create mlx_lm.server wrapper spec via `/speckit.specify`
+- [x] **INFRA-001** (COMPLETED - MLX Server Wrapper): Create mlx_lm.server wrapper spec via `/speckit.specify`
   - Design startup/shutdown workflow with health checks
   - Implement model profile selection logic (per-path hybrid quantization support)
   - Add startup argument presets for 120B+ model memory optimization
