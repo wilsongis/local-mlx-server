@@ -5,6 +5,11 @@ description = "Local Apple Silicon MLX inference infrastructure"
 requires-python = ">=3.10"
 dependencies = [
     "mlx-lm>=0.31.3",
+    "click",
+    "flask",
+    "pyyaml",
+    "requests",
+    "psutil",
     "pytest",
     "ruff",
     "turboquant-mlx-full>=0.1.6",

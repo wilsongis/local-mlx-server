@@ -1,0 +1,70 @@
+# Model Profiles Configuration for MLX Server Wrapper
+# Defines model profiles with quantization settings, KV cache compression, and inference arguments
+
+# API Key Configuration (optional, leave empty to disable auth on admin endpoints)
+# Uncomment and set value, or use environment variable MLX_WRAPPER_API_KEY
+# api_key: "your-secret-key-here"
+# api_key_env_var: "MLX_WRAPPER_API_KEY"  # Uncomment to read from environment variable
+
+profiles:
+  - name: "120b-balanced"
+    model_path: "~/.cache/huggingface/hub/Nemotron-120B"
+    quantization:
+      type: "hybrid"
+      paths:
+        - pattern: "attention.*"
+          bits: 8
+          group_size: 64
+          description: "Attention layers at 8-bit for quality retention"
+        - pattern: "ffn.*"
+          bits: 4
+          group_size: 128
+          description: "FFN layers at 4-bit for memory savings"
+    kv_cache:
+      quantized: true
+      bits: 4
+    inference_args:
+      max_context_length: 2048
+      temperature: 0.7
+      max_tokens: 4096
+      batch_size: 1
+    description: "Balanced performance/memory for 120B on 48GB"
+
+  - name: "120b-extreme"
+    model_path: "~/.cache/huggingface/hub/Nemotron-120B"
+    quantization:
+      type: "hybrid"
+      paths:
+        - pattern: ".*"
+          bits: 4
+          group_size: 128
+          description: "All layers at 4-bit for maximum memory savings"
+    kv_cache:
+      quantized: true
+      bits: 4
+    inference_args:
+      max_context_length: 1024
+      temperature: 0.7
+      max_tokens: 2046
+      batch_size: 1
+    description: "Minimum viable config for 120B on 48GB"
+
+  - name: "70b-standard"
+    model_path: "~/.cache/huggingface/hub/Llama-3.3-70B"
+    quantization:
+      type: "uniform"
+      bits: 4
+      group_size: 128
+    kv_cache:
+      quantized: true
+      bits: 4
+    inference_args:
+      max_context_length: 4096
+      temperature: 0.7
+      max_tokens: 4096
+      batch_size: 1
+    description: "Standard 4-bit quantization for 70B models"
+
+# API key configuration (optional, leave empty to disable auth on admin endpoints)
+api_key: ""
+# api_key_env_var: "MLX_WRAPPER_API_KEY"  # Uncomment to read from environment variable

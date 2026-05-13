@@ -1,0 +1,35 @@
+# Memory Optimization Presets for 120B+ Models
+# Named configurations targeting specific model size classes with memory-optimized defaults
+
+presets:
+  - name: "120b-extreme"
+    target_memory_gb: 45
+    model_size_class: "120B+"
+    quantization_profile: "120b-extreme"
+    kv_cache_bits: 4
+    max_context_length: 1024
+    batch_size: 1
+    description: "Minimum viable config for 120B on 48GB"
+
+  - name: "120b-balanced"
+    target_memory_gb: 48
+    model_size_class: "120B+"
+    quantization_profile: "120b-balanced"
+    kv_cache_bits: 4
+    max_context_length: 2048
+    batch_size: 1
+    description: "Balanced performance/memory for 120B on 48GB"
+
+  - name: "120b-quality"
+    target_memory_gb: 52
+    model_size_class: "120B+"
+    quantization_profile: "120b-balanced"
+    kv_cache_bits: 8
+    max_context_length: 4096
+    batch_size: 1
+    description: "Higher quality with 8-bit KV cache, requires 52GB+ memory"
+
+# Memory warning thresholds (optional)
+memory_warnings:
+  critical_gb: 2  # Warn if less than 2GB available
+  warning_gb: 5   # Suggest alternative preset if less than 5GB available

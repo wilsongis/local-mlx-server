@@ -80,6 +80,11 @@ Infrastructure operators need startup argument presets for 120B+ models so they 
 - **FR-008**: System MUST display available profiles and presets when invalid selections are made
 - **FR-009**: System MUST integrate with `just` command recipes for operational consistency (start, stop, status, health checks)
 - **FR-010**: System MUST preserve OpenAI-compatible API behavior through mlx_lm.server configuration
+- **FR-011**: System MUST provide logging, metrics, and health check endpoints for server monitoring
+- **FR-012**: System MUST use YAML configuration files for model profile definitions
+- **FR-013**: System MUST support API key authentication for endpoints
+- **FR-014**: System MUST provide a single wrapper script with subcommands (start, stop, status, health)
+- **FR-015**: System MUST check available memory before startup and warn or fail if insufficient for selected preset
 
 ### Key Entities *(include if feature involves data)*
 
@@ -99,6 +104,16 @@ Infrastructure operators need startup argument presets for 120B+ models so they 
 - **SC-005**: 120B+ model presets enable successful inference with less than 48GB memory consumption on Apple Silicon
 - **SC-006**: 95% of health check requests return accurate status (no false positives/negatives)
 - **SC-007**: Operators can identify and select from at least 3 distinct model profiles or presets
+
+## Clarifications
+
+### Session 2026-05-11
+
+- Q: What level of observability should be specified for the MLX server wrapper? → A: B - Add logging, metrics, and health check endpoints for server monitoring
+- Q: What configuration format should be used for model profile definitions? → A: B - YAML configuration files for profile definitions
+- Q: What authentication mechanism should the MLX server wrapper support for its API endpoints? → A: B - API key authentication for endpoints
+- Q: What should be the primary interface for the MLX server wrapper? → A: B - Single wrapper script with subcommands (start, stop, status, health)
+- Q: How should the system handle memory pressure scenarios when loading 120B+ models? → A: B - Check available memory before startup and warn/fail if insufficient
 
 ## Assumptions
 

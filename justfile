@@ -80,7 +80,37 @@ doctor:
     @echo "Health check complete."
 
 # ------------------------------------------------------------------------------
-# 3. SECURITY
+# 3. MLX WRAPPER COMMANDS
+# ------------------------------------------------------------------------------
+
+# Start MLX server with specified profile
+mlx-start PROFILE="120b-balanced" PRESET="":
+    @echo "Starting MLX server with profile: {{PROFILE}}..."
+    @uv run python scripts/mlx-wrapper.py start --profile {{PROFILE}} {{if PRESET != ""}}--preset {{PRESET}}{{endif}}
+
+# Stop running MLX server
+mlx-stop FORCE="false":
+    @echo "Stopping MLX server..."
+    @uv run python scripts/mlx-wrapper.py stop {{if FORCE == "true"}}--force{{endif}}
+
+# Check MLX server status
+mlx-status:
+    @uv run python scripts/mlx-wrapper.py status
+
+# Check MLX server health
+mlx-health:
+    @uv run python scripts/mlx-wrapper.py health
+
+# List available model profiles
+mlx-profiles:
+    @uv run python scripts/mlx-wrapper.py list-profiles
+
+# List available presets
+mlx-presets:
+    @uv run python scripts/mlx-wrapper.py list-presets
+
+# ------------------------------------------------------------------------------
+# 4. SECURITY
 # ------------------------------------------------------------------------------
 
 # Validate security configuration
