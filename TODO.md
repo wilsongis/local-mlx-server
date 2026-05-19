@@ -13,13 +13,13 @@
   - Define documentation standards for inference infrastructure projects
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **DOC-002**: Create security implementation spec via `/speckit.specify`
+- [x] **DOC-002**: Create security implementation spec via `/speckit.specify`
   - Define security boundaries for local inference server
   - Document API endpoint security considerations (mlx_lm.server OpenAI compatibility)
   - Specify secure model path handling and environment variable management
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **DOC-003**: Create operations runbook spec via `/speckit.specify`
+- [x] **DOC-003**: Create operations runbook spec via `/speckit.specify`
   - Document all `just` recipes with examples and edge cases
   - Create troubleshooting guide for common startup/memory issues
   - Define model profile selection decision tree (48GB vs 64GB vs 96GB tiers)

@@ -113,14 +113,14 @@ presets:
 
 **Using just recipe** (recommended):
 ```bash
-# Start with default profile
-just mlx-start
-
 # Start with specific profile
 just mlx-start 120b-balanced
 
-# Start with preset (applies memory optimizations)
-just mlx-start 120b-balanced --preset 120b-extreme
+# Start with profile and preset (applies memory optimizations)
+just mlx-start 120b-balanced 120b-extreme
+
+# Start with custom port
+just mlx-start 120b-balanced "" --port 8080
 ```
 
 **Using wrapper directly**:
@@ -129,7 +129,7 @@ just mlx-start 120b-balanced --preset 120b-extreme
 python scripts/mlx-wrapper.py start --profile 120b-balanced
 
 # Start on custom port
-python scripts/mlx-wrapper.py start --profile 120b-balanced --port 9000
+python scripts/mlx-wrapper.py start --profile 120b-balanced --port 8080
 
 # Start with preset
 python scripts/mlx-wrapper.py start --profile 120b-balanced --preset 120b-extreme
@@ -184,21 +184,27 @@ just mlx-health
 # Using wrapper
 python scripts/mlx-wrapper.py health
 
-# Wait for healthy (useful in scripts)
-python scripts/mlx-wrapper.py health --wait --timeout 300
+# JSON output (for scripting)
+python scripts/mlx-wrapper.py health --json
 ```
 
 **Expected output** (JSON):
 ```json
 {
-  "status": "healthy",
+  "status": "ready",
   "model": "Nemotron-120B",
   "model_loaded": true,
   "load_progress_pct": 100,
   "memory_usage_gb": 45.2,
   "memory_limit_gb": 48,
   "uptime_seconds": 9240,
-  "active_requests": 0
+  "active_requests": 0,
+  "last_check_timestamp": "2026-05-19T21:00:00Z",
+  "system": {
+    "cpu_percent": 12.5,
+    "memory_available_gb": 15.8,
+    "disk_free_gb": 120.3
+  }
 }
 ```
 

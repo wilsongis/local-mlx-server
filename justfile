@@ -102,11 +102,11 @@ mlx-health:
     @uv run python scripts/mlx-wrapper.py health
 
 # List available model profiles
-mlx-profiles:
+mlx-list-profiles:
     @uv run python scripts/mlx-wrapper.py list-profiles
 
 # List available presets
-mlx-presets:
+mlx-list-presets:
     @uv run python scripts/mlx-wrapper.py list-presets
 
 # ------------------------------------------------------------------------------

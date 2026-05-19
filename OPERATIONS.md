@@ -28,6 +28,12 @@ This section documents all `just` recipes with command syntax, required argument
 | `just verify` | Run lint + test (full verification) | [verify](#verify) |
 | `just doctor` | Run environment health checks | [doctor](#doctor) |
 | `just security-check` | Validate security configuration | [security-check](#security-check) |
+| `just mlx-start` | Start MLX server with wrapper (profile/preset) | [mlx-start](#mlx-start) |
+| `just mlx-stop` | Stop MLX server via wrapper | [mlx-stop](#mlx-stop) |
+| `just mlx-status` | Check MLX server status via wrapper | [mlx-status](#mlx-status) |
+| `just mlx-health` | Check MLX server health via wrapper | [mlx-health](#mlx-health) |
+| `just mlx-list-profiles` | List available model profiles | [mlx-list-profiles](#mlx-list-profiles) |
+| `just mlx-list-presets` | List available startup presets | [mlx-list-presets](#mlx-list-presets) |
 
 ---
 
@@ -407,6 +413,177 @@ Security check passed.
 - **Script not found**: Command fails. Verify `scripts/security-check.sh` exists.
 - **Security violations**: Script exits with error. Review output and fix `.env.example`.
 - **.env file permissions**: Script warns if `.env` is not 600.
+
+---
+
+### mlx-start
+
+**Description**: Start MLX server with wrapper using a model profile and optional preset.
+
+**Syntax**:
+```bash
+just mlx-start --profile PROFILE_NAME [--preset PRESET_NAME] [--port PORT] [--host HOST]
+```
+
+**Arguments**:
+- `--profile TEXT` (required): Model profile name as defined in `scripts/wrapper-config/profiles.yaml`
+- `--preset TEXT` (optional): Startup preset name from `scripts/wrapper-config/presets.yaml`
+- `--port INTEGER` (default: 8080): Server port
+- `--host TEXT` (default: "127.0.0.1"): Server host
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MLX_WRAPPER_CONFIG` | `scripts/wrapper-config/profiles.yaml` | Path to profiles config |
+| `MLX_WRAPPER_PRESETS` | `scripts/wrapper-config/presets.yaml` | Path to presets config |
+
+**Examples**:
+```bash
+# Start with a profile
+just mlx-start --profile 120b-balanced
+
+# Start with profile and preset
+just mlx-start --profile 120b-extreme --preset 120b-extreme
+
+# Start with custom port
+just mlx-start --profile 120b-balanced --port 8080
+```
+
+**Edge Cases**:
+- **Profile not found**: Wrapper exits with error listing available profiles.
+- **Port already in use**: Wrapper fails to start, check with `lsof -i :8080`.
+- **Insufficient memory**: Wrapper warns and suggests alternative presets.
+- **Model path not found**: Wrapper exits with error indicating invalid model path.
+
+---
+
+### mlx-stop
+
+**Description**: Stop running MLX server via the wrapper.
+
+**Syntax**:
+```bash
+just mlx-stop [--force] [--timeout SECONDS]
+```
+
+**Arguments**:
+- `--force`: Force kill if graceful shutdown fails
+- `--timeout INTEGER` (default: 30): Seconds to wait for graceful shutdown
+
+**Examples**:
+```bash
+# Graceful stop
+just mlx-stop
+
+# Force stop
+just mlx-stop --force
+```
+
+**Edge Cases**:
+- **No server running**: Command succeeds silently.
+- **Server unresponsive**: Use `--force` to send SIGKILL after timeout.
+
+---
+
+### mlx-status
+
+**Description**: Check MLX server status via the wrapper.
+
+**Syntax**:
+```bash
+just mlx-status [--json]
+```
+
+**Arguments**:
+- `--json`: Output status in JSON format
+
+**Examples**:
+```bash
+# Human-readable status
+just mlx-status
+
+# JSON output
+just mlx-status --json
+```
+
+**Edge Cases**:
+- **No server running**: Reports server as down.
+- **Server starting up**: Reports status as "initializing".
+
+---
+
+### mlx-health
+
+**Description**: Check MLX server health endpoint via the wrapper.
+
+**Syntax**:
+```bash
+just mlx-health
+```
+
+**Examples**:
+```bash
+# Check health
+just mlx-health
+```
+
+**Edge Cases**:
+- **Server not running**: Reports health as "down".
+- **Server still loading**: Reports status as "initializing" with progress.
+
+---
+
+### mlx-list-profiles
+
+**Description**: List available model profiles from configuration.
+
+**Syntax**:
+```bash
+just mlx-list-profiles [--json]
+```
+
+**Arguments**:
+- `--json`: Output in JSON format
+
+**Examples**:
+```bash
+# List profiles
+just mlx-list-profiles
+
+# JSON output
+just mlx-list-profiles --json
+```
+
+**Edge Cases**:
+- **Config file not found**: Exits with error indicating missing config.
+- **Invalid YAML**: Exits with error showing parse details.
+
+---
+
+### mlx-list-presets
+
+**Description**: List available startup presets for different memory tiers.
+
+**Syntax**:
+```bash
+just mlx-list-presets [--json]
+```
+
+**Arguments**:
+- `--json`: Output in JSON format
+
+**Examples**:
+```bash
+# List presets
+just mlx-list-presets
+
+# JSON output
+just mlx-list-presets --json
+```
+
+**Edge Cases**:
+- **Config file not found**: Exits with error indicating missing config.
+- **Invalid YAML**: Exits with error showing parse details.
 
 ---
 

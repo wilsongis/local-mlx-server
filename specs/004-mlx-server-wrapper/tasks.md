@@ -25,12 +25,12 @@ description: "Task list for MLX Server Wrapper implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create wrapper script structure in `scripts/mlx_wrapper.py`
-- [ ] T002 [P] Create wrapper configuration directory `scripts/wrapper-config/`
-- [ ] T003 [P] Create model profiles YAML template in `scripts/wrapper-config/profiles.yaml`
-- [ ] T004 [P] Create startup presets YAML template in `scripts/wrapper-config/presets.yaml`
-- [ ] T005 Add Click dependency to `pyproject.toml` (click, pyyaml, psutil)
-- [ ] T006 [P] Create tests directory structure `tests/test_wrapper.py`
+- [X] T001 Create wrapper script structure in `scripts/mlx_wrapper.py`
+- [X] T002 [P] Create wrapper configuration directory `scripts/wrapper-config/`
+- [X] T003 [P] Create model profiles YAML template in `scripts/wrapper-config/profiles.yaml`
+- [X] T004 [P] Create startup presets YAML template in `scripts/wrapper-config/presets.yaml`
+- [X] T005 Add Click dependency to `pyproject.toml` (click, pyyaml, psutil)
+- [X] T006 [P] Create tests directory structure `tests/test_wrapper.py`
 
 ---
 
@@ -40,14 +40,14 @@ description: "Task list for MLX Server Wrapper implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Implement YAML config loader in `scripts/mlx_wrapper.py` (load profiles and presets)
-- [ ] T008 [P] Implement model profile validator in `scripts/mlx_wrapper.py` (validate ModelProfile fields per data-model.md)
-- [ ] T009 [P] Implement startup preset validator in `scripts/mlx_wrapper.py` (validate StartupPreset fields per data-model.md)
-- [ ] T010 Implement memory checking utility using psutil in `scripts/mlx_wrapper.py`
-- [ ] T011 Implement subprocess manager for mlx_lm.server in `scripts/mlx_wrapper.py`
-- [ ] T012 Add PID file management for server process tracking in `scripts/mlx_wrapper.py`
-- [ ] T013 Integrate wrapper with `just` recipes (update `justfile` with mlx-start, mlx-stop, mlx-status, mlx-health)
-- [ ] T014 Implement logging configuration with verbose mode support in `scripts/mlx_wrapper.py`
+- [X] T007 Implement YAML config loader in `scripts/mlx_wrapper.py` (load profiles and presets)
+- [X] T008 [P] Implement model profile validator in `scripts/mlx_wrapper.py` (validate ModelProfile fields per data-model.md)
+- [X] T009 [P] Implement startup preset validator in `scripts/mlx_wrapper.py` (validate StartupPreset fields per data-model.md)
+- [X] T010 Implement memory checking utility using psutil in `scripts/mlx_wrapper.py`
+- [X] T011 Implement subprocess manager for mlx_lm.server in `scripts/mlx_wrapper.py`
+- [X] T012 Add PID file management for server process tracking in `scripts/mlx_wrapper.py`
+- [X] T013 Integrate wrapper with `just` recipes (update `justfile` with mlx-start, mlx-stop, mlx-status, mlx-health)
+- [X] T014 Implement logging configuration with verbose mode support in `scripts/mlx_wrapper.py`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -61,18 +61,18 @@ description: "Task list for MLX Server Wrapper implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement `start` subcommand CLI interface in `scripts/mlx_wrapper.py` (Click command with --profile, --port, --host, --preset arguments per contracts/cli-interface.md)
-- [ ] T016 [US1] Implement profile validation before startup in `scripts/mlx_wrapper.py` (check profile exists, validate model path)
-- [ ] T017 [US1] Implement memory check before startup in `scripts/mlx_wrapper.py` (compare available memory against profile/preset requirements, FR-015)
-- [ ] T018 [US1] Implement mlx_lm.server startup with quantization config in `scripts/mlx_wrapper.py` (apply hybrid quantization settings from ModelProfile)
-- [ ] T019 [US1] Implement server ready polling in `scripts/mlx_wrapper.py` (poll `/v1/models` endpoint, show progress)
-- [ ] T020 [US1] Implement `health` subcommand CLI interface in `scripts/mlx_wrapper.py` (per contracts/cli-interface.md and contracts/health-endpoint.md)
-- [ ] T021 [US1] Implement health check endpoint proxy in `scripts/mlx_wrapper.py` (GET /health with HealthStatus entity fields)
-- [ ] T022 [US1] Implement health status tracking in `scripts/mlx_wrapper.py` (status: initializing/ready/degraded/down, load_progress_pct, memory_usage_gb)
-- [ ] T023 [US1] Implement `status` subcommand in `scripts/mlx_wrapper.py` (check process running, query /v1/models, output human-readable and --json formats)
-- [ ] T024 [US1] Implement `stop` subcommand in `scripts/mlx_wrapper.py` (SIGTERM graceful shutdown, --force option, --timeout, cleanup PID file)
-- [ ] T025 [US1] Add error handling for startup failures in `scripts/mlx_wrapper.py` (invalid profile, port in use, model load failure with clear error messages)
-- [ ] T026 [US1] Integrate OpenAI-compatible API preservation in `scripts/mlx_wrapper.py` (ensure mlx_lm.server args maintain FR-010 compliance)
+- [X] T015 [US1] Implement `start` subcommand CLI interface in `scripts/mlx_wrapper.py` (Click command with --profile, --port, --host, --preset arguments per contracts/cli-interface.md)
+- [X] T016 [US1] Implement profile validation before startup in `scripts/mlx_wrapper.py` (check profile exists, validate model path)
+- [X] T017 [US1] Implement memory check before startup in `scripts/mlx_wrapper.py` (compare available memory against profile/preset requirements, FR-015)
+- [X] T018 [US1] Implement mlx_lm.server startup with quantization config in `scripts/mlx_wrapper.py` (apply hybrid quantization settings from ModelProfile)
+- [X] T019 [US1] Implement server ready polling in `scripts/mlx_wrapper.py` (poll `/v1/models` endpoint, show progress)
+- [X] T020 [US1] Implement `health` subcommand CLI interface in `scripts/mlx_wrapper.py` (per contracts/cli-interface.md and contracts/health-endpoint.md)
+- [X] T021 [US1] Implement health check endpoint proxy in `scripts/mlx_wrapper.py` (GET /health with HealthStatus entity fields)
+- [X] T022 [US1] Implement health status tracking in `scripts/mlx_wrapper.py` (status: initializing/ready/degraded/down, load_progress_pct, memory_usage_gb)
+- [X] T023 [US1] Implement `status` subcommand in `scripts/mlx_wrapper.py` (check process running, query /v1/models, output human-readable and --json formats)
+- [X] T024 [US1] Implement `stop` subcommand in `scripts/mlx_wrapper.py` (SIGTERM graceful shutdown, --force option, --timeout, cleanup PID file)
+- [X] T025 [US1] Add error handling for startup failures in `scripts/mlx_wrapper.py` (invalid profile, port in use, model load failure with clear error messages)
+- [X] T026 [US1] Integrate OpenAI-compatible API preservation in `scripts/mlx_wrapper.py` (ensure mlx_lm.server args maintain FR-010 compliance)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently - operators can start/stop server and check health
 
@@ -86,13 +86,13 @@ description: "Task list for MLX Server Wrapper implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Implement `list-profiles` subcommand in `scripts/mlx_wrapper.py` (display available profiles with descriptions, --json format)
-- [ ] T028 [US2] Implement hybrid quantization path parser in `scripts/mlx_wrapper.py` (parse QuantizationPath entities with pattern, bits, group_size from data-model.md)
-- [ ] T029 [US2] Implement per-path quantization application in `scripts/mlx_wrapper.py` (apply different quantization types per model layer/path using MLX quantization API)
-- [ ] T030 [US2] Implement KV cache compression config in `scripts/mlx_wrapper.py` (apply kv_cache settings from ModelProfile: quantized, bits)
-- [ ] T031 [US2] Implement inference arguments builder in `scripts/mlx_wrapper.py` (build mlx_lm.server args from ModelProfile.inference_args: max_context_length, temperature, batch_size)
-- [ ] T032 [US2] Add validation for invalid profile names in `scripts/mlx_wrapper.py` (return error listing available profiles, FR-007, FR-008)
-- [ ] T033 [US2] Implement quantization type validation in `scripts/mlx_wrapper.py` (validate bits are 4/8/16, group_size is power of 2 per data-model.md)
+- [X] T027 [US2] Implement `list-profiles` subcommand in `scripts/mlx_wrapper.py` (display available profiles with descriptions, --json format)
+- [X] T028 [US2] Implement hybrid quantization path parser in `scripts/mlx_wrapper.py` (parse QuantizationPath entities with pattern, bits, group_size from data-model.md)
+- [X] T029 [US2] Implement per-path quantization application in `scripts/mlx_wrapper.py` (apply different quantization types per model layer/path using MLX quantization API)
+- [X] T030 [US2] Implement KV cache compression config in `scripts/mlx_wrapper.py` (apply kv_cache settings from ModelProfile: quantized, bits)
+- [X] T031 [US2] Implement inference arguments builder in `scripts/mlx_wrapper.py` (build mlx_lm.server args from ModelProfile.inference_args: max_context_length, temperature, batch_size)
+- [X] T032 [US2] Add validation for invalid profile names in `scripts/mlx_wrapper.py` (return error listing available profiles, FR-007, FR-008)
+- [X] T033 [US2] Implement quantization type validation in `scripts/mlx_wrapper.py` (validate bits are 4/8/16, group_size is power of 2 per data-model.md)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - profile selection with hybrid quantization is functional
 
@@ -106,12 +106,12 @@ description: "Task list for MLX Server Wrapper implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Implement `list-presets` subcommand in `scripts/mlx_wrapper.py` (display available presets with memory requirements and model size targets)
-- [ ] T035 [US3] Implement preset loader in `scripts/mlx_wrapper.py` (load StartupPreset from presets.yaml, validate references to ModelProfile)
-- [ ] T036 [US3] Implement preset argument merger in `scripts/mlx_wrapper.py` (apply preset defaults, allow explicit arguments to override preset values, FR-006)
-- [ ] T037 [US3] Implement 120B+ memory optimization in `scripts/mlx_wrapper.py` (enforce batch_size=1, limit max_context_length≤2048 for 120B+ presets per data-model.md)
-- [ ] T038 [US3] Implement memory warning system in `scripts/mlx_wrapper.py` (warn operator when available memory insufficient, suggest alternative presets, FR-015)
-- [ ] T039 [US3] Add preset validation for model size class in `scripts/mlx_wrapper.py` (validate target_memory_gb ≤ 128, check batch_size rules per data-model.md)
+- [X] T034 [US3] Implement `list-presets` subcommand in `scripts/mlx_wrapper.py` (display available presets with memory requirements and model size targets)
+- [X] T035 [US3] Implement preset loader in `scripts/mlx_wrapper.py` (load StartupPreset from presets.yaml, validate references to ModelProfile)
+- [X] T036 [US3] Implement preset argument merger in `scripts/mlx_wrapper.py` (apply preset defaults, allow explicit arguments to override preset values, FR-006)
+- [X] T037 [US3] Implement 120B+ memory optimization in `scripts/mlx_wrapper.py` (enforce batch_size=1, limit max_context_length≤2048 for 120B+ presets per data-model.md)
+- [X] T038 [US3] Implement memory warning system in `scripts/mlx_wrapper.py` (warn operator when available memory insufficient, suggest alternative presets, FR-015)
+- [X] T039 [US3] Add preset validation for model size class in `scripts/mlx_wrapper.py` (validate target_memory_gb ≤ 128, check batch_size rules per data-model.md)
 
 **Checkpoint**: All user stories should now be independently functional - presets for 120B+ models work correctly
 
@@ -121,15 +121,15 @@ description: "Task list for MLX Server Wrapper implementation"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T040 [P] Update `README.md` with MLX wrapper documentation (usage examples, CLI commands, configuration)
-- [ ] T041 [P] Update `OPERATIONS.md` with wrapper operational procedures (start/stop/health workflows via just recipes)
-- [ ] T042 Code cleanup and refactoring in `scripts/mlx_wrapper.py` (extract helper functions, improve error messages)
-- [ ] T043 Performance optimization for health checks in `scripts/mlx_wrapper.py` (ensure <1s response time per SC-002)
-- [ ] T044 Add API key authentication support in `scripts/mlx_wrapper.py` (FR-013, pass --api-key to mlx_lm.server if supported, otherwise implement wrapper-level auth)
-- [ ] T045 Validate startup time for 120B+ models in `scripts/mlx_wrapper.py` (ensure <5min startup per SC-001)
-- [ ] T046 Run quickstart.md validation (verify all examples in quickstart.md work correctly)
-- [ ] T047 Update `justfile` with additional helper recipes (mlx-list-profiles, mlx-list-presets)
-- [ ] T048 Implement metrics endpoint in `scripts/mlx_wrapper.py` (FR-011: expose memory_usage_gb, request_count, avg_latency via /metrics endpoint or health response extension)
+- [X] T040 [P] Update `README.md` with MLX wrapper documentation (usage examples, CLI commands, configuration)
+- [X] T041 [P] Update `OPERATIONS.md` with wrapper operational procedures (start/stop/health workflows via just recipes)
+- [X] T042 Code cleanup and refactoring in `scripts/mlx_wrapper.py` (extract helper functions, improve error messages)
+- [X] T043 Performance optimization for health checks in `scripts/mlx_wrapper.py` (ensure <1s response time per SC-002)
+- [X] T044 Add API key authentication support in `scripts/mlx_wrapper.py` (FR-013, pass --api-key to mlx_lm.server if supported, otherwise implement wrapper-level auth)
+- [X] T045 Validate startup time for 120B+ models in `scripts/mlx_wrapper.py` (ensure <5min startup per SC-001)
+- [X] T046 Run quickstart.md validation (verify all examples in quickstart.md work correctly)
+- [X] T047 Update `justfile` with additional helper recipes (mlx-list-profiles, mlx-list-presets)
+- [X] T048 Implement metrics endpoint in `scripts/mlx_wrapper.py` (FR-011: expose memory_usage_gb, request_count, avg_latency via /metrics endpoint or health response extension)
 
 ---
 

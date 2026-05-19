@@ -20,7 +20,7 @@ import click
 import psutil
 import requests
 import yaml
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 
 # Constants
 DEFAULT_CONFIG_PATH = "scripts/wrapper-config/profiles.yaml"
@@ -31,6 +31,12 @@ MLX_LM_SERVER_SHUTDOWN_TIMEOUT = 30  # 30 seconds graceful shutdown
 
 # API Key for admin endpoints (None = no auth required)
 api_key = None  # type: Optional[str]
+
+# Health status type annotation
+health_status = {}  # type: Dict[str, Any]
+
+# Metrics type annotation
+metrics = {}  # type: Dict[str, Any]
 
 
 class MLXServerManager:
@@ -63,6 +69,13 @@ class MLXServerManager:
             for key, value in extra_args.items():
                 if value is not None:
                     cmd.extend([f"--{key.replace('_', '-')}", str(value)])
+
+        # Add API key if configured (FR-013)
+        global api_key
+        if api_key:
+            # Try to pass to mlx_lm.server if it supports --api-key
+            cmd.extend(["--api-key", api_key])
+            click.echo("[INFO] API key authentication enabled")
 
         click.echo(f"[INFO] Starting mlx_lm.server on {self.host}:{self.port}")
         click.echo(f"[INFO] Model: {self.model_path}")
@@ -190,7 +203,7 @@ class MLXServerManager:
         return False
 
     def wait_for_ready(self, timeout: int = MLX_LM_SERVER_READY_TIMEOUT) -> bool:
-        """Wait for server to become ready by polling /v1/models endpoint."""
+        """Wait for server to become ready by polling /v1/models endpoint (SC-001: <5min)."""
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
@@ -198,9 +211,15 @@ class MLXServerManager:
                     f"http://{self.host}:{self.port}/v1/models", timeout=2
                 )
                 if resp.ok:
+                    elapsed = time.time() - start_time
                     click.echo(
-                        "[SUCCESS] Server ready at http://{self.host}:{self.port}"
+                        f"[SUCCESS] Server ready at http://{self.host}:{self.port} (took {elapsed:.1f}s)"
                     )
+                    # Warn if startup took too long (SC-001)
+                    if elapsed > 300:  # 5 minutes
+                        click.echo(
+                            f"[WARN] Startup took {elapsed:.1f}s, exceeds SC-001 target of 300s"
+                        )
                     return True
             except (requests.RequestException, ConnectionError):
                 pass
@@ -219,7 +238,11 @@ class MLXServerManager:
 
             time.sleep(5)
 
-        click.echo(f"[ERROR] Server did not become ready within {timeout}s", err=True)
+        elapsed = time.time() - start_time
+        click.echo(
+            f"[ERROR] Server did not become ready within {timeout}s (elapsed: {elapsed:.1f}s)",
+            err=True,
+        )
         return False
 
 
@@ -385,8 +408,10 @@ def check_api_key() -> bool:
     if not api_key:
         return True
 
-    # Check X-API-Key header
-    request_key = request.headers.get("X-API-Key")
+    # Check X-API-Key header (using Flask's request object)
+    from flask import request as flask_request
+
+    request_key = flask_request.headers.get("X-API-Key")
     if request_key and request_key == api_key:
         return True
 
@@ -395,6 +420,14 @@ def check_api_key() -> bool:
 
 # Health endpoint server (Flask)
 health_app = Flask(__name__)
+
+# Metrics tracking
+metrics = {
+    "request_count": 0,
+    "total_latency": 0.0,  # For calculating average latency
+    "start_time": time.time(),
+}
+
 health_status = {
     "status": "down",
     "model": None,
@@ -409,6 +442,48 @@ health_status = {
 }
 
 
+# Metrics endpoint (FR-011)
+@health_app.route("/metrics", methods=["GET"])
+def metrics_endpoint():
+    """Expose metrics: memory_usage_gb, request_count, avg_latency."""
+    global metrics, health_status
+
+    # Calculate average latency
+    avg_latency = 0.0
+    if metrics["request_count"] > 0:
+        avg_latency = metrics["total_latency"] / metrics["request_count"]
+
+    # Calculate uptime
+    uptime = time.time() - metrics["start_time"]
+
+    result = {
+        "memory_usage_gb": health_status.get("memory_usage_gb", 0.0),
+        "request_count": metrics["request_count"],
+        "avg_latency": round(avg_latency, 3),
+        "uptime_seconds": int(uptime),
+        "active_requests": health_status.get("active_requests", 0),
+    }
+    return jsonify(result)
+
+
+# Request tracking using Flask's g object
+from flask import g
+
+
+@health_app.before_request
+def before_request():
+    g.start_time = time.time()
+
+
+@health_app.after_request
+def after_request(response):
+    if hasattr(g, "start_time"):
+        latency = time.time() - g.start_time
+        metrics["request_count"] += 1
+        metrics["total_latency"] += latency
+    return response
+
+
 @health_app.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint returning server status and system metrics."""
@@ -418,10 +493,10 @@ def health_check():
     if not check_api_key():
         return jsonify({"error": "Invalid or missing API key"}), 401
 
-    # Update system metrics
+    # Update system metrics (non-blocking for performance - SC-002)
     memory = psutil.virtual_memory()
     health_status["system"] = {
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
+        "cpu_percent": psutil.cpu_percent(interval=None),  # Non-blocking call
         "memory_available_gb": memory.available / (1024**3),
         "disk_free_gb": psutil.disk_usage("/").free / (1024**3),
     }

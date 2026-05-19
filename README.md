@@ -59,7 +59,6 @@ TurboQuant is also applied to KV cache storage:
 - Approximately 4x to 4.6x KV cache compression in reported configurations.
 - Materially lowers runtime memory at long context lengths.
 - For very large models, reduced memory traffic can also improve throughput.
-
 ## What This Repository Is Building Toward
 
 The infrastructure goal is explicit:
@@ -70,6 +69,82 @@ The infrastructure goal is explicit:
 - Reliable local serving for agentic coding tools and adjacent local automation systems.
 
 This repository is not intended to become an application monolith. It is the model-serving backbone.
+
+---
+
+## MLX Server Wrapper
+
+The MLX Server Wrapper (`scripts/mlx_wrapper.py`) provides a unified CLI interface for managing `mlx_lm.server` instances with health monitoring, model profile selection, and memory-optimized presets for 120B+ models.
+
+### Quick Start
+
+```bash
+# Initialize environment
+just init
+
+# Start server with a model profile
+just mlx-start --profile 120b-balanced
+
+# Check server health
+just mlx-health
+
+# Check server status
+just mlx-status
+
+# Stop the server
+just mlx-stop
+```
+
+### CLI Commands
+
+The wrapper provides the following subcommands:
+
+| Command | Description |
+|---------|-------------|
+| `start` | Start MLX server with specified profile and optional preset |
+| `stop` | Stop running MLX server (graceful with --force option) |
+| `status` | Check server running status and model information |
+| `health` | Check server health endpoint with detailed status |
+| `list-profiles` | List available model profiles from configuration |
+| `list-presets` | List available startup presets for different memory tiers |
+
+### Model Profiles
+
+Model profiles define model paths, quantization settings, and inference arguments. Profiles are stored in `scripts/wrapper-config/profiles.yaml`.
+
+Example profile selection:
+
+```bash
+# Use a specific profile
+just mlx-start --profile 120b-balanced
+
+# Override port and host
+just mlx-start --profile 120b-balanced --port 8080 --host 127.0.0.1
+```
+
+### Startup Presets
+
+Presets provide memory-optimized configurations for different model sizes and memory tiers. Presets are stored in `scripts/wrapper-config/presets.yaml`.
+
+```bash
+# Use a preset for 120B+ models
+just mlx-start --profile 120b-extreme --preset 120b-extreme
+```
+
+### Configuration Files
+
+- **profiles.yaml**: Model profile definitions with quantization and inference settings
+- **presets.yaml**: Startup presets targeting specific memory tiers and model sizes
+
+See [`scripts/wrapper-config/profiles.yaml`](scripts/wrapper-config/profiles.yaml) and [`scripts/wrapper-config/presets.yaml`](scripts/wrapper-config/presets.yaml) for examples.
+
+### Documentation
+
+- [Wrapper Operations](OPERATIONS.md#mlx-wrapper-operations) - Detailed operational procedures
+- [CLI Interface Contract](specs/004-mlx-server-wrapper/contracts/cli-interface.md) - Full CLI specification
+- [Health Endpoint Contract](specs/004-mlx-server-wrapper/contracts/health-endpoint.md) - Health check API specification
+- [Quickstart Guide](specs/004-mlx-server-wrapper/quickstart.md) - Step-by-step getting started guide
+
 
 ## Security Configuration
 
