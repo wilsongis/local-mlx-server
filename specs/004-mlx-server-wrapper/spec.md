@@ -80,9 +80,9 @@ Infrastructure operators need startup argument presets for 120B+ models so they 
 - **FR-008**: System MUST display available profiles and presets when invalid selections are made
 - **FR-009**: System MUST integrate with `just` command recipes for operational consistency (start, stop, status, health checks)
 - **FR-010**: System MUST preserve OpenAI-compatible API behavior through mlx_lm.server configuration
-- **FR-011**: System MUST provide logging, metrics, and health check endpoints for server monitoring
+- **FR-011**: System MUST provide logging, health check endpoints, and operational metrics (memory_usage_gb, request_count, avg_latency) for server monitoring
 - **FR-012**: System MUST use YAML configuration files for model profile definitions
-- **FR-013**: System MUST support API key authentication for endpoints
+- **FR-013**: System MUST provide API key authentication for endpoints (leverage mlx_lm.server --api-key if available, otherwise implement wrapper-level middleware)
 - **FR-014**: System MUST provide a single wrapper script with subcommands (start, stop, status, health)
 - **FR-015**: System MUST check available memory before startup and warn or fail if insufficient for selected preset
 
