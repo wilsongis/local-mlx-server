@@ -82,7 +82,16 @@ The MLX Server Wrapper (`scripts/mlx_wrapper.py`) provides a unified CLI interfa
 # Initialize environment
 just init
 
-# Start server with a model profile
+# Start server with lifecycle management (PID file, port conflict detection)
+just server-start
+
+# Check server status (process, health, uptime)
+just server-status
+
+# Stop server with graceful shutdown
+just server-stop
+
+# Or use MLX wrapper with profiles
 just mlx-start --profile 120b-balanced
 
 # Check server health
@@ -94,6 +103,22 @@ just mlx-status
 # Stop the server
 just mlx-stop
 ```
+
+### Server Lifecycle Management
+
+The server lifecycle management provides reliable PID file tracking, port conflict detection, and graceful shutdown capabilities through `just` recipes:
+
+| Recipe | Description |
+|---------|-------------|
+| `just server-start` | Start server with PID management and port conflict detection |
+| `just server-stop` | Stop server with graceful shutdown (SIGTERM -> wait -> SIGKILL) |
+| `just server-status` | Check server status (process, health endpoint, uptime) |
+| `just server-config` | Display current server lifecycle configuration |
+
+For detailed documentation, see:
+- [Server Lifecycle Operations](OPERATIONS.md#server-start)
+- [Server Lifecycle Specification](specs/005-server-lifecycle-management/spec.md)
+- [Server Lifecycle Plan](specs/005-server-lifecycle-management/plan.md)
 
 ### CLI Commands
 

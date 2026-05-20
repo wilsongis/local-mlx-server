@@ -13,7 +13,7 @@ Implement server lifecycle management through `just` recipes (`server-start`, `s
 
 **Language/Version**: Python 3.11+ (for lifecycle management scripts), Bash (for just recipes)  
 **Primary Dependencies**: psutil (for process management), requests (for health checks), mlx-lm (server runtime)  
-**Storage**: PID file at `/tmp/mlx-server.pid` (configurable), log output to stdout/stderr  
+**Storage**: PID file at `/tmp/mlx-server.pid` (configurable via SERVER_PID_FILE in justfile), log output to stdout/stderr  
 **Testing**: pytest with process mocking (extend existing [`tests/test_main.py`](tests/test_main.py))  
 **Target Platform**: macOS/Apple Silicon (primary), Linux (secondary)  
 **Project Type**: Infrastructure scripts / just recipes  
@@ -30,7 +30,7 @@ Implement server lifecycle management through `just` recipes (`server-start`, `s
 | I. Infrastructure-Only Scope | ✅ PASS | Pure operational recipes and scripts - no product/web-stack features |
 | II. Local Serving Reliability | ✅ PASS | Improves server reliability with PID tracking, port conflict resolution, graceful shutdown |
 | III. Quantization and Memory First | ✅ PASS | Graceful shutdown ensures proper memory release for 120B+ model serving |
-| IV. Just Command Bridge | ✅ PASS | All operations exposed via `just server-start/stop/status` recipes |
+| IV. Just Command Bridge | ✅ PASS | All operations exposed via `just server-start/stop/status` recipes with configurable PID path |
 | V. Reversible, Testable Changes | ✅ PASS | PID file management and just recipes are minimally invasive and testable |
 
 **Gate Result**: ALL PASSED - Proceed to Phase 0
@@ -49,7 +49,8 @@ specs/005-server-lifecycle-management/
 ├── checklists/          # Quality gates
 │   └── requirements.md  # Completion checklist
 └── contracts/           # Phase 1 output (/speckit.plan command)
-    └── just-recipes.md  # just recipe interface contracts
+    ├── just-recipes.md  # just recipe interface contracts
+    └── server-lifecycle-interface.md  # ServerLifecycleManager class interface
 ```
 
 ### Source Code (repository root)
@@ -86,10 +87,29 @@ No violations to justify - all constitution principles pass.
 *To be completed by `/speckit.plan` command - design the just recipes, PID file format, port conflict resolution flow, and graceful shutdown sequence.*
 
 **Design Artifacts**:
-- `data-model.md` - PID file structure, status output format, configuration options
+- `data-model.md` - PID file structure, status output format, configuration options, multi-instance configuration model
 - `quickstart.md` - Quick reference for `just server-start/stop/status` usage
 - `contracts/just-recipes.md` - Recipe interface contracts (args, env vars, exit codes)
+- `contracts/server-lifecycle-interface.md` - ServerLifecycleManager class interface and CLI entry points
 - `research.md` - Phase 0 research findings
+
+**Multi-Instance Configuration Model** (for US3 Scenario 4):
+
+Configuration stored in `scripts/wrapper-config/instances.yaml`:
+- Each instance has: pid_file, port, host, model_path
+- Default instance uses justfile variables (SERVER_PID_FILE, PORT, HOST, MODEL_PATH)
+- `just server-status` displays all configured instances
+- Future: `just server-start INSTANCE=secondary` to start specific instance
+
+**Active Request Draining** (for FR-007):
+- mlx_lm.server does not expose active request count natively
+- Implementation polls `/health` endpoint to verify server is ready
+- Graceful shutdown: SIGTERM → wait for health endpoint to fail → SIGKILL after timeout
+- Note: True request draining requires mlx_lm.server wrapper integration (future)
+
+**Concurrent Operations Protection**:
+- Use file locking (fcntl.flock) on PID file for atomic operations
+- Prevents race conditions when multiple operators run start/stop simultaneously
 
 ## Phase 2: Task Breakdown
 
@@ -103,7 +123,7 @@ No violations to justify - all constitution principles pass.
 
 ## Dependencies
 
-- **DEP-001**: [`justfile`](justfile) - Must be extended with lifecycle recipes
+- **DEP-001**: [`justfile`](justfile) - Extended with lifecycle recipes and SERVER_PID_FILE configuration
 - **DEP-002**: [`scripts/mlx_wrapper.py`](scripts/mlx_wrapper.py) - May need integration hooks for graceful shutdown
 - **DEP-003**: mlx_lm.server - Must support SIGTERM for graceful shutdown
 - **DEP-004**: psutil Python package - For process and port management
@@ -113,6 +133,6 @@ No violations to justify - all constitution principles pass.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | mlx_lm.server doesn't handle SIGTERM gracefully | High - Force kill loses active requests | Test shutdown behavior, implement request draining wrapper if needed |
-| PID file corruption or race conditions | Medium - False "already running" errors | Use atomic writes, validate PID file contents, check process alive |
+| PID file corruption or race conditions | Medium - False "already running" errors | Use atomic writes with file locking, validate PID file contents, check process alive |
 | Port conflict with system processes | Low - Unlikely on default port 8080 | Skip system processes (PID < 100), require confirmation for non-user processes |
 | macOS `lsof`/`ss` differences from Linux | Medium - Port detection fails on macOS | Use psutil (cross-platform) as primary, fallback to CLI tools |

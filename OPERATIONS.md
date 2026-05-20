@@ -34,6 +34,10 @@ This section documents all `just` recipes with command syntax, required argument
 | `just mlx-health` | Check MLX server health via wrapper | [mlx-health](#mlx-health) |
 | `just mlx-list-profiles` | List available model profiles | [mlx-list-profiles](#mlx-list-profiles) |
 | `just mlx-list-presets` | List available startup presets | [mlx-list-presets](#mlx-list-presets) |
+| `just server-start` | Start MLX server with lifecycle management (PID, port conflict) | [server-start](#server-start) |
+| `just server-stop` | Stop MLX server with graceful shutdown (SIGTERM -> SIGKILL) | [server-stop](#server-stop) |
+| `just server-status` | Check server status (process, health, uptime) | [server-status](#server-status) |
+| `just server-config` | Display server lifecycle configuration | [server-config](#server-config) |
 
 ---
 
@@ -584,6 +588,143 @@ just mlx-list-presets --json
 **Edge Cases**:
 - **Config file not found**: Exits with error indicating missing config.
 - **Invalid YAML**: Exits with error showing parse details.
+
+---
+
+### server-start
+
+**Description**: Start MLX server with lifecycle management (PID file, port conflict detection, graceful startup).
+
+**Syntax**:
+```bash
+just server-start [MODEL_PATH]
+```
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PID_FILE` | `/tmp/mlx-server.pid` | Path to PID file |
+| `SERVER_GRACEFUL_TIMEOUT` | `30` | Graceful shutdown timeout (seconds) |
+| `SERVER_LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `MODEL_PATH` | `./models` | Path to model directory |
+| `HOST` | `127.0.0.1` | Host to bind to |
+| `PORT` | `8000` | Port to listen on |
+
+**Examples**:
+```bash
+# Start with default settings
+just server-start
+
+# Start with custom model path
+MODEL_PATH=/path/to/model just server-start
+
+# Start with custom port
+PORT=8080 just server-start
+```
+
+**Edge Cases**:
+- **Server already running**: Fails with "Server already running" message.
+- **Port already in use**: Detects conflict and reports conflicting PID.
+- **Stale PID file**: Automatically detects and removes stale PID files.
+- **Model path not found**: Server fails to start. Verify path exists.
+
+---
+
+### server-stop
+
+**Description**: Stop MLX server with graceful shutdown (SIGTERM -> wait -> SIGKILL).
+
+**Syntax**:
+```bash
+just server-stop
+```
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PID_FILE` | `/tmp/mlx-server.pid` | Path to PID file |
+| `SERVER_GRACEFUL_TIMEOUT` | `30` | Graceful shutdown timeout (seconds) |
+
+**Examples**:
+```bash
+# Graceful stop
+just server-stop
+
+# Stop with custom timeout
+SERVER_GRACEFUL_TIMEOUT=60 just server-stop
+```
+
+**Edge Cases**:
+- **No server running**: Succeeds silently (no-op).
+- **Server unresponsive**: After timeout, sends SIGKILL to force termination.
+- **PID file missing**: Succeeds silently (assumes server not running).
+
+---
+
+### server-status
+
+**Description**: Check MLX server status (process, health endpoint, uptime).
+
+**Syntax**:
+```bash
+just server-status
+```
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PID_FILE` | `/tmp/mlx-server.pid` | Path to PID file |
+| `HOST` | `127.0.0.1` | Host to check |
+| `PORT` | `8000` | Port to check |
+
+**Examples**:
+```bash
+# Check status
+just server-status
+
+# Human-readable output
+$ just server-status
+Server Status: HEALTHY
+  PID: 12345
+  Uptime: 5 minutes
+  Port: 8080
+  Health: healthy
+```
+
+**Edge Cases**:
+- **Server not running**: Reports status as "stopped" or "stale_pid".
+- **Server starting up**: May report as "degraded" if health check not ready.
+- **Health endpoint down**: Reports status as "degraded".
+
+---
+
+### server-config
+
+**Description**: Display current server lifecycle configuration.
+
+**Syntax**:
+```bash
+just server-config
+```
+
+**Examples**:
+```bash
+# Display configuration
+$ just server-config
+Server Lifecycle Configuration:
+  PID File: /tmp/mlx-server.pid
+  Graceful Timeout: 30s
+  Log Level: INFO
+  Model Path: ./models
+  Host: 127.0.0.1
+  Port: 8000
+
+To change defaults, edit these variables at the top of the justfile:
+  SERVER_PID_FILE, SERVER_GRACEFUL_TIMEOUT, SERVER_LOG_LEVEL, MODEL_PATH, HOST, PORT
+```
+
+**Edge Cases**:
+- **Configuration not set**: Shows default values from justfile.
 
 ---
 

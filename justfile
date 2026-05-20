@@ -7,6 +7,11 @@ MAX_TOKENS := "4096"
 IMAGE_NAME := "local-mlx-server"
 CONTAINER_NAME := "local-mlx-server"
 
+# Server Lifecycle Configuration
+SERVER_PID_FILE := "/tmp/mlx-server.pid"
+SERVER_GRACEFUL_TIMEOUT := "30"
+SERVER_LOG_LEVEL := "INFO"
+
 # ------------------------------------------------------------------------------
 # 1. CORE EXECUTION
 # ------------------------------------------------------------------------------
@@ -116,3 +121,34 @@ mlx-list-presets:
 # Validate security configuration
 security-check:
     @bash scripts/security-check.sh
+
+# ------------------------------------------------------------------------------
+# 5. SERVER LIFECYCLE MANAGEMENT
+# ------------------------------------------------------------------------------
+
+# Start MLX server with lifecycle management (PID file, port conflict detection)
+server-start MODEL_PATH="{{MODEL_PATH}}":
+    @echo "Starting MLX server with lifecycle management..."
+    @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --model {{MODEL_PATH}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
+
+# Stop MLX server with graceful shutdown (SIGTERM -> wait -> SIGKILL)
+server-stop:
+    @echo "Stopping MLX server with graceful shutdown..."
+    @uv run python scripts/server-lifecycle.py stop --pid-file {{SERVER_PID_FILE}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
+
+# Check MLX server status (process, health endpoint, uptime)
+server-status:
+    @uv run python scripts/server-lifecycle.py status --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}}
+
+# Configure server lifecycle settings (display current configuration)
+server-config:
+    @echo "Server Lifecycle Configuration:"
+    @echo "  PID File: {{SERVER_PID_FILE}}"
+    @echo "  Graceful Timeout: {{SERVER_GRACEFUL_TIMEOUT}}s"
+    @echo "  Log Level: {{SERVER_LOG_LEVEL}}"
+    @echo "  Model Path: {{MODEL_PATH}}"
+    @echo "  Host: {{HOST}}"
+    @echo "  Port: {{PORT}}"
+    @echo ""
+    @echo "To change defaults, edit these variables at the top of the justfile:"
+    @echo "  SERVER_PID_FILE, SERVER_GRACEFUL_TIMEOUT, SERVER_LOG_LEVEL, MODEL_PATH, HOST, PORT"
