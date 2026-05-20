@@ -728,6 +728,142 @@ To change defaults, edit these variables at the top of the justfile:
 
 ---
 
+### models-list
+
+**Description**: List all available model profiles with metadata.
+
+**Syntax**:
+```bash
+just models-list [JSON_FLAG="--json"]
+```
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `JSON_FLAG` | flag | No | Set to `--json` for JSON output |
+
+**Examples**:
+```bash
+# List profiles in human-readable format
+$ just models-list
+Available Model Profiles:
+─────────────────────────────────────────────
+Name: nemotron-120b
+Path: ~/.cache/huggingface/hub/Nemotron-120B-48GB
+Memory: 48.0 GB
+Description: Nemotron 120B optimized for 48GB Apple Silicon
+Status: Active
+
+Name: gpt-oss-120b
+Path: ~/.cache/huggingface/hub/GPT-OSS-120B
+Memory: 48.0 GB
+Description: GPT-OSS 120B with hybrid quantization
+Status: Inactive
+
+Total: 3 profiles
+Active: nemotron-120b
+
+# List profiles in JSON format
+$ just models-list --json
+{
+  "profiles": [
+    {
+      "name": "nemotron-120b",
+      "model_path": "~/.cache/huggingface/hub/Nemotron-120B-48GB",
+      "memory_estimate_gb": 48.0,
+      "description": "Nemotron 120B optimized for 48GB Apple Silicon",
+      "is_active": true
+    }
+  ],
+  "active_profile": "nemotron-120b",
+  "total_count": 3
+}
+```
+
+**Edge Cases**:
+- **profiles.yaml not found**: Command fails with error message suggesting to check configuration.
+- **Empty profiles list**: Shows "No profiles configured" message.
+- **Corrupted YAML**: Command fails with YAML parse error.
+
+---
+
+### model-use
+
+**Description**: Activate a model profile for serving with optional validation.
+
+**Syntax**:
+```bash
+just model-use PROFILE="" VALIDATE="true" FORCE="false"
+```
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `PROFILE` | string | Yes | Name of the model profile to activate |
+| `VALIDATE` | string | No | Set to "true" to run validation (default: true) |
+| `FORCE` | string | No | Set to "true" to skip validation and force activation |
+
+**Examples**:
+```bash
+# Activate a profile with validation (default)
+$ just model-use nemotron-120b
+Activating model profile: nemotron-120b
+✓ Profile found: nemotron-120b
+✓ Model path exists: ~/.cache/huggingface/hub/Nemotron-120B-48GB
+✓ Key files present: config.json, model.safetensors
+✓ Disk space sufficient: 120.5 GB available, 48.0 GB required
+✓ Profile activated successfully
+
+Active model: nemotron-120b
+
+# Activate with validation disabled
+$ just model-use gpt-oss-120b VALIDATE="false"
+
+# Force activation (skip validation)
+$ just model-use qwen3.5-122b FORCE="true"
+```
+
+**Edge Cases**:
+- **Profile not found**: Shows error with list of available profiles.
+- **Validation failure**: Shows validation errors, suggests using `--force`.
+- **Disk space warning**: Activates but warns about low disk space.
+- **State file locked**: Waits for lock or fails if timeout.
+
+---
+
+### model-status
+
+**Description**: Display the currently active model profile.
+
+**Syntax**:
+```bash
+just model-status
+```
+
+**Examples**:
+```bash
+# When a model is active
+$ just model-status
+Current Model Profile: nemotron-120b
+Path: ~/.cache/huggingface/hub/Nemotron-120B-48GB
+Memory: 48.0 GB
+Description: Nemotron 120B optimized for 48GB Apple Silicon
+
+# When no model is active
+$ just model-status
+No model profile currently active.
+
+Use 'just models-list' to see available profiles.
+Use 'just model-use <profile>' to activate a profile.
+```
+
+**Edge Cases**:
+- **No active profile**: Shows helpful message with next steps.
+- **State file missing**: Treats as no active profile.
+- **State file corrupted**: Shows error reading state file.
+
+---
+
 ## Troubleshooting Guide
 
 This section covers common operational issues and their resolutions.

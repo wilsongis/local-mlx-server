@@ -1,9 +1,19 @@
 # Feature Specification: Model Management
 
-**Feature Branch**: `006-model-management`  
-**Created**: 2026-05-19  
-**Status**: Draft  
+**Feature Branch**: `006-model-management`
+**Created**: 2026-05-19
+**Status**: Draft
 **Input**: User description: "Create model management spec via `/speckit.specify` - Design `just` recipes: `models-list`, `model-use <profile>` - Implement model profile registry (Nemotron-120B-48GB, GPT-OSS-120B, Qwen3.5-122B) - Add model path validation and disk space checks - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`"
+
+## Clarifications
+
+### Session 2026-05-20
+
+- Q: What should be explicitly marked as out-of-scope for this model management feature? → A: Model downloading, automatic updates, multi-node serving
+- Q: How should model profiles be uniquely identified in the registry? → A: Profile name (e.g., 'nemotron-120b')
+- Q: Where should the memory requirement estimates for the three target models be defined? → A: In profiles.yaml configuration file
+- Q: How should the currently active model profile be tracked and persisted? → A: State file (e.g., .active-model)
+- Q: How should concurrent model profile changes be handled? → A: File-based locking (flock)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -80,7 +90,7 @@ As a server operator, I want the system to automatically validate that model fil
 
 ### Key Entities *(include if feature involves data)*
 
-- **Model Profile**: A named configuration for a large language model, including profile name, model path, memory requirements (estimated GB), quantization settings, and metadata (description, version)
+- **Model Profile**: A named configuration for a large language model, including profile name (unique identifier), model path, memory requirements (estimated GB), quantization settings, and metadata (description)
 - **Model Registry**: The collection of all configured model profiles, supporting lookup by name and enumeration of all available profiles
 - **Validation Result**: The outcome of validating a model profile, including validation status (pass/fail), error messages, warnings, and details about path accessibility and disk space
 
@@ -97,12 +107,22 @@ As a server operator, I want the system to automatically validate that model fil
 
 ## Assumptions
 
-- Model profiles are configured through a configuration file (e.g., YAML) that the system reads at runtime
+- Model profiles are configured through `profiles.yaml` that the system reads at runtime
+- Memory requirements (estimated GB) for each model profile are defined as a field in `profiles.yaml`
+- The currently active model profile is tracked via a state file (`.active-model`) containing the profile name
+- Concurrent model profile changes are serialized using file-based locking (flock) on the state file
 - Disk space checks focus on available space in the model storage directory and system temporary directories
 - Model path validation checks for the existence of key model files (e.g., model weights, configuration) rather than exhaustive file validation
 - The system operates in a local environment where disk space and file accessibility can be reliably checked
 - Model memory requirements are estimated based on model size and quantization configuration, not runtime measurement
 - The command interface (`just` recipes) is the primary user interface for these operations
+
+## Out-of-Scope
+
+The following capabilities are explicitly out-of-scope for this feature:
+- Model downloading from external sources
+- Automatic model updates or version management
+- Multi-node model serving or distributed inference
 
 ## Dependencies
 

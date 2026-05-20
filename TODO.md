@@ -36,13 +36,13 @@
   - Add startup argument presets for 120B+ model memory optimization
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **INFRA-002**: Create server lifecycle management spec via `/speckit.specify`
+- [x] **INFRA-002** (COMPLETED - Server Lifecycle Management): Create server lifecycle management spec via `/speckit.specify`
   - Design `just` recipes: `server-start`, `server-stop`, `server-status`
   - Implement PID file management and port conflict resolution
   - Add graceful shutdown with active request draining
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **INFRA-003**: Create model management spec via `/speckit.specify`
+- [x] **INFRA-003** (COMPLETED - Model Management): Create model management spec via `/speckit.specify`
   - Design `just` recipes: `models-list`, `model-use <profile>`
   - Implement model profile registry (Nemotron-120B-48GB, GPT-OSS-120B, Qwen3.5-122B)
   - Add model path validation and disk space checks
@@ -57,18 +57,24 @@
   - Implement 3-bit attention / 2-bit expert configuration (tq3a-tq2e g32)
   - Add support for latent-MoE architectures (Nemotron-3-Super-120B-A12B)
   - Design calibration-data Lloyd-Max codebook option (Phase 2 from research)
+  - Reference: [sharpner/turboquant-mlx](https://github.com/sharpner/turboquant-mlx) V3 Lloyd-Max implementation
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [ ] **QUANT-002**: Create KV cache compression spec via `/speckit.specify`
-  - Implement 3-bit/4-bit KV cache compression with TurboQuant
+  - Implement TurboQuant V2 (speed) and V3 (quality) paths for KV cache compression
+  - **V2 path**: Use `mx.quantized_matmul` (Metal-accelerated), 3.6x compression at ~105% FP16 speed
+  - **V3 path**: Lloyd-Max codebook (paper-correct), 4.1-5.5x compression, requires custom Metal kernels for speed
   - Add hybrid attention support (KVCache, RotatingKVCache, ArraysCache)
   - Design double-compression rules (3-bit weights + 4-bit KV for ~20B, 3-bit+3-bit for 100B+)
+  - **Key finding**: V2 3-bit rot+QJL beats FP16 on Gemma (D=256) by 1.1%, acts as regularizer
+  - Reference: [sharpner/turboquant-mlx](https://github.com/sharpner/turboquant-mlx), [arozanov/turboquant-mlx](https://github.com/arozanov/turboquant-mlx) for fused kernels
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [ ] **QUANT-003**: Create quantization CLI integration spec via `/speckit.specify`
   - Wrap `turboquant-convert` with sensible defaults for Apple Silicon
   - Add `bits_for_path()` hook for custom per-path bit allocation
   - Implement model card generation with compression metadata
+  - Add head_dim-aware defaults: D=256 models (Gemma) get better low-bit quality than D=128 (Llama)
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [ ] **QUANT-004**: Create model size estimation tool spec via `/speckit.specify`
@@ -77,6 +83,7 @@
   - Design per-path hybrid quantization size predictor (tq3a-tq2e g32)
   - Add CLI integration: `just estimate-model <model> --bits --attn-bits --mlp-bits --context`
   - Include double-compression rules (3-bit+4-bit for ~20B, 3-bit+3-bit for 100B+)
+  - Account for head_dim scaling: D=256 models achieve 5.5x KV compression at +7% PPL vs +27% for D=128
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 ---
@@ -168,23 +175,31 @@
   - Implement activation-based Lloyd-Max codebook training
   - Add `--calibration-source` flag to convert.py
   - Design per-layer codebook optimization
+  - Reference: V3 Lloyd-Max outperforms affine at 3-bit: +5-9% vs +9-23% PPL
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [ ] **FUTURE-002**: Create fused QJL kernel spec via `/speckit.specify` (Phase 2 from research)
-  - Implement 1-bit residual correction for SwitchLinear paths
-  - Add Metal kernel for fused QJL in MoE layers
+  - Implement 1-bit residual correction for V2 paths (QJL works as additional correction, not replacement)
+  - Add Metal kernel for fused QJL sign-bit scoring (see `turboquant/fused_qjl.py` in sharpner/turboquant-mlx)
   - Design fallback to unfused path when kernel unavailable
+  - **Key finding**: QJL improves V2 3-bit from +6.6% to +5.3% PPL, but TurboQuant_prod (replacing MSE bits) degrades quality
+  - Reference: [arozanov/turboquant-mlx](https://github.com/arozanov/turboquant-mlx) achieves 4.6x compression at 98% FP16 speed with fused kernels
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [ ] **FUTURE-003**: Create automatic bit-width search spec via `/speckit.specify` (Phase 3 from research)
   - Design calibration-loss-based bit-width policy search
   - Add `bits_for_path()` auto-tuning from validation set
   - Implement Pareto-optimal bit-width curves (quality vs memory)
+  - Account for head_dim: D=256 models (Gemma) tolerate lower bits than D=128 (Llama)
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 ---
 
 ## ✅ Completed Tasks
+
+- **INFRA-002** (Server Lifecycle Management): All 42 tasks completed in `specs/005-server-lifecycle-management/tasks.md`. Implemented `scripts/server-lifecycle.py` with PID management, port conflict resolution, graceful shutdown, and `just` recipes (`server-start`, `server-stop`, `server-status`). Verified with `tests/test_server_lifecycle.py`.
+
+- **INFRA-003** (Model Management): Implemented via spec 006-model-management. Created `scripts/model-management.py` (435 lines) with `ModelRegistry`, `ModelProfile`, `ValidationResult` classes, state file management with `flock` locking, and CLI commands. Added `just` recipes: `models-list`, `model-use`, `model-status`. Configured three model profiles in `scripts/wrapper-config/profiles.yaml` (nemotron-120b, gpt-oss-120b, qwen3.5-122b).
 
 *(Tasks will be moved here as they are completed via `/speckit.verify`)*
 

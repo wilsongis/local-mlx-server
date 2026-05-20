@@ -203,7 +203,43 @@ class ServerLifecycleManager:
         """
         Start MLX server with PID management.
         Returns True if server started successfully.
+        If model_path is not provided (empty string), reads from active model state file.
         """
+        # If no model path provided, check for active model
+        if not model_path:
+            state_file = Path(__file__).parent.parent / ".active-model"
+            if state_file.exists():
+                try:
+                    with open(state_file, "r") as f:
+                        active_profile = f.read().strip()
+                        if active_profile:
+                            # Look up profile in registry to get model path
+                            from scripts.model_management import ModelRegistry
+
+                            registry = ModelRegistry()
+                            profile = registry.get_profile(active_profile)
+                            if profile:
+                                model_path = profile.model_path
+                                logger.info(
+                                    f"Using active model profile: {active_profile} ({model_path})"
+                                )
+                            else:
+                                logger.warning(
+                                    f"Active profile '{active_profile}' not found in registry"
+                                )
+                        else:
+                            logger.error(
+                                "No active model set. Use 'just model-use <profile>' to set one."
+                            )
+                            return False
+                except Exception as e:
+                    logger.error(f"Failed to read active model: {e}")
+                    return False
+            else:
+                logger.error("No model path provided and no active model set.")
+                logger.error("Use 'just model-use <profile>' to set an active model.")
+                return False
+
         # Check for existing PID file
         pid, is_valid = self.validate_pid_file()
         if is_valid:

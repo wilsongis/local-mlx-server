@@ -91,12 +91,12 @@ doctor:
 # Start MLX server with specified profile
 mlx-start PROFILE="120b-balanced" PRESET="":
     @echo "Starting MLX server with profile: {{PROFILE}}..."
-    @uv run python scripts/mlx-wrapper.py start --profile {{PROFILE}} {{if PRESET != ""}}--preset {{PRESET}}{{endif}}
+    @uv run python scripts/mlx-wrapper.py start --profile {{PROFILE}}
 
 # Stop running MLX server
-mlx-stop FORCE="false":
+mlx-stop:
     @echo "Stopping MLX server..."
-    @uv run python scripts/mlx-wrapper.py stop {{if FORCE == "true"}}--force{{endif}}
+    @uv run python scripts/mlx-wrapper.py stop
 
 # Check MLX server status
 mlx-status:
@@ -136,7 +136,7 @@ server-stop:
     @echo "Stopping MLX server with graceful shutdown..."
     @uv run python scripts/server-lifecycle.py stop --pid-file {{SERVER_PID_FILE}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
 
-# Check MLX server status (process, health endpoint, uptime)
+# Check MLX server status (process, health, uptime)
 server-status:
     @uv run python scripts/server-lifecycle.py status --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}}
 
@@ -152,3 +152,32 @@ server-config:
     @echo ""
     @echo "To change defaults, edit these variables at the top of the justfile:"
     @echo "  SERVER_PID_FILE, SERVER_GRACEFUL_TIMEOUT, SERVER_LOG_LEVEL, MODEL_PATH, HOST, PORT"
+
+# ------------------------------------------------------------------------------
+# 6. MODEL MANAGEMENT
+# ------------------------------------------------------------------------------
+
+# List all available model profiles
+models-list JSON_FLAG="":
+    @uv run python scripts/model-management.py list {{JSON_FLAG}}
+
+# Activate a model profile for serving
+model-use PROFILE="" VALIDATE="true" FORCE="false":
+    @if [ "{{FORCE}}" = "true" ]; then \
+        uv run python scripts/model-management.py use {{PROFILE}} --force; \
+    elif [ "{{VALIDATE}}" = "true" ]; then \
+        uv run python scripts/model-management.py use {{PROFILE}} --validate; \
+    else \
+        uv run python scripts/model-management.py use {{PROFILE}}; \
+    fi
+
+# Show currently active model profile
+model-status:
+    @uv run python scripts/model-management.py status
+
+# Check model-status before server startup
+mlx-start-check:
+    @echo "Checking model status before startup..."
+    @just model-status
+    @echo "Starting MLX server with lifecycle management..."
+    @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}

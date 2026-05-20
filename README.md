@@ -120,6 +120,38 @@ For detailed documentation, see:
 - [Server Lifecycle Specification](specs/005-server-lifecycle-management/spec.md)
 - [Server Lifecycle Plan](specs/005-server-lifecycle-management/plan.md)
 
+### Model Management
+
+The model management system provides `just` recipes for listing, selecting, and validating model profiles for 120B+ model serving on Apple Silicon:
+
+| Recipe | Description |
+|---------|-------------|
+| `just models-list` | List all available model profiles with metadata |
+| `just model-use <profile>` | Activate a model profile for serving (with validation) |
+| `just model-status` | Show currently active model profile |
+
+Model profiles are configured in `scripts/wrapper-config/profiles.yaml` and include quantization settings, KV cache compression, and memory estimates for Apple Silicon systems.
+
+Example workflow:
+```bash
+# List available model profiles
+just models-list
+
+# Activate a model profile (with validation)
+just model-use nemotron-120b
+
+# Check current active profile
+just model-status
+
+# Start server with active profile
+just mlx-start
+```
+
+For detailed documentation, see:
+- [Model Management Operations](OPERATIONS.md#models-list)
+- [Model Management Specification](specs/006-model-management/spec.md)
+- [Model Management Plan](specs/006-model-management/plan.md)
+
 ### CLI Commands
 
 The wrapper provides the following subcommands:
