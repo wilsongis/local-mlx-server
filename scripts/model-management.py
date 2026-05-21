@@ -392,6 +392,10 @@ def main():
     use_parser.add_argument(
         "--force", action="store_true", help="Skip validation and force activation"
     )
+    use_parser.add_argument(
+        "--quant-profile",
+        help="Quantization profile name or path (e.g., tq3a-tq2e-g32)",
+    )
 
     # Status command
     status_parser = subparsers.add_parser("status", help="Show current active profile")
@@ -405,7 +409,7 @@ def main():
     if args.command == "list":
         list_models_cli(json_output=args.json)
     elif args.command == "use":
-        activate_model_cli(args.profile, validate=args.validate, force=args.force)
+        activate_model_cli(args.profile, validate=args.validate, force=args.force, quant_profile=args.quant_profile if hasattr(args, 'quant_profile') else None)
     elif args.command == "status":
         active = get_active_profile()
         if active:

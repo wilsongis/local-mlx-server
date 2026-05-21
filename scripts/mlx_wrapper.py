@@ -439,6 +439,18 @@ health_status = {
     "active_requests": 0,
     "last_check_timestamp": datetime.utcnow().isoformat() + "Z",
     "system": {},
+    # Quantization status (FR-008, Spec 007)
+    "quantization": {
+        "profile": None,
+        "attention_bits": None,
+        "expert_bits": None,
+        "group_size": None,
+        "model_architecture": None,
+        "is_moe": False,
+        "expert_count": 0,
+        "active_params": None,
+        "total_params": None,
+    },
 }
 
 
@@ -522,6 +534,37 @@ def update_health_status(status: str, model: Optional[str] = None, **kwargs):
     if model:
         health_status["model"] = model
     health_status.update(kwargs)
+    health_status["last_check_timestamp"] = datetime.utcnow().isoformat() + "Z"
+
+def update_quantization_status(
+    profile: Optional[str] = None,
+    attention_bits: Optional[int] = None,
+    expert_bits: Optional[int] = None,
+    group_size: Optional[int] = None,
+    model_architecture: Optional[str] = None,
+    is_moe: bool = False,
+    expert_count: int = 0,
+    active_params: Optional[int] = None,
+    total_params: Optional[int] = None,
+):
+    """Update quantization status in health endpoint (FR-008, Spec 007)."""
+    global health_status
+    if profile is not None:
+        health_status["quantization"]["profile"] = profile
+    if attention_bits is not None:
+        health_status["quantization"]["attention_bits"] = attention_bits
+    if expert_bits is not None:
+        health_status["quantization"]["expert_bits"] = expert_bits
+    if group_size is not None:
+        health_status["quantization"]["group_size"] = group_size
+    if model_architecture is not None:
+        health_status["quantization"]["model_architecture"] = model_architecture
+    health_status["quantization"]["is_moe"] = is_moe
+    health_status["quantization"]["expert_count"] = expert_count
+    if active_params is not None:
+        health_status["quantization"]["active_params"] = active_params
+    if total_params is not None:
+        health_status["quantization"]["total_params"] = total_params
     health_status["last_check_timestamp"] = datetime.utcnow().isoformat() + "Z"
 
 
@@ -611,6 +654,14 @@ def start(ctx, profile, port, host, preset):
 
     # Build arguments from profile
     args = build_mlx_args_from_profile(profile_config)
+
+    # Check for MLX_QUANT_PROFILE environment variable (T009, Spec 007)
+    quant_profile_env = os.environ.get("MLX_QUANT_PROFILE")
+    if quant_profile_env:
+        click.echo(f"[INFO] Using quantization profile from MLX_QUANT_PROFILE: {quant_profile_env}")
+        # Add quantization config argument
+        # The quantization manager will handle this during model load
+        args["--quant-config"] = quant_profile_env
 
     # Apply preset if specified
     if preset:

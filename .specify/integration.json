@@ -1,4 +1,15 @@
 {
+  "version": "0.8.12",
+  "integration_state_schema": 1,
+  "installed_integrations": [
+    "roo"
+  ],
+  "integration_settings": {
+    "roo": {
+      "script": "sh",
+      "invoke_separator": "."
+    }
+  },
   "integration": "roo",
-  "version": "0.8.3"
+  "default_integration": "roo"
 }

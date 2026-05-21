@@ -181,3 +181,32 @@ mlx-start-check:
     @just model-status
     @echo "Starting MLX server with lifecycle management..."
     @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
+
+# ------------------------------------------------------------------------------
+# 6. QUANTIZATION MANAGEMENT (Spec 007)
+# ------------------------------------------------------------------------------
+
+# List available quantization profiles
+quant-list:
+    @uv run python -c "import yaml; data = yaml.safe_load(open('scripts/wrapper-config/profiles.yaml')); profiles = data.get('quantization_profiles', {}); print('Available Quantization Profiles:'); [print(f'  - {k} (attention: {v[\"attention_bits\"]}-bit, expert: {v[\"expert_bits\"]}-bit, group: {v[\"group_size\"]})') for k, v in profiles.items()]"
+
+# Validate a quantization profile
+quant-validate PROFILE="":
+    @if [ -z "{{PROFILE}}" ]; then echo "Usage: just quant-validate <profile>"; exit 1; fi
+    @uv run python scripts/quantization/cli_helper.py validate --profile {{PROFILE}}
+
+# Apply quantization profile to a model
+quant-apply MODEL="" PROFILE="":
+    @if [ -z "{{MODEL}}" ] || [ -z "{{PROFILE}}" ]; then echo "Usage: just quant-apply <model> <profile>"; exit 1; fi
+    @echo "Applying quantization profile '{{PROFILE}}' to model '{{MODEL}}'..."
+    @uv run python scripts/quantization/cli_helper.py apply --model {{MODEL}} --profile {{PROFILE}}
+
+# Show current quantization status for active model
+quant-status:
+    @uv run python -c "from scripts.mlx_wrapper import health_status; import json; quant = health_status.get('quantization', {}); print('Quantization Status:'); print(json.dumps(quant, indent=2))"
+
+# Run Lloyd-Max calibration with provided dataset
+quant-calibrate DATASET="" OUTPUT="":
+    @if [ -z "{{DATASET}}" ] || [ -z "{{OUTPUT}}" ]; then echo "Usage: just quant-calibrate <dataset> <output>"; exit 1; fi
+    @echo "Running Lloyd-Max calibration with dataset: {{DATASET}}"
+    @uv run python -c "from scripts.quantization.lloyd_max import LloydMaxCalibrator; import numpy as np; calibrator = LloydMaxCalibrator(bits=3, group_size=32); data = calibrator.load_calibration_data('{{DATASET}}'); codebook = calibrator.generate_codebook(data); path = calibrator.save_codebook('{{OUTPUT}}'); print(f'Codebook generated: {path}'); print(f'Perplexity improvement: {calibrator.perplexity_improvement:.2f}%')"

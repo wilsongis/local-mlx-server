@@ -76,7 +76,48 @@ This repository is not intended to become an application monolith. It is the mod
 
 The MLX Server Wrapper (`scripts/mlx_wrapper.py`) provides a unified CLI interface for managing `mlx_lm.server` instances with health monitoring, model profile selection, and memory-optimized presets for 120B+ models.
 
+#
+## Per-Path Hybrid Quantization (Spec 007)
+
+This repository now supports per-path hybrid quantization for MLX models on Apple Silicon, enabling different bit-widths for attention versus expert layers (e.g., tq3a-tq2e g32). This feature supports latent-MoE architectures like Nemotron-3-Super-120B-A12B and provides Lloyd-Max codebook calibration for better quantization accuracy.
+
+### Key Features
+
+- **Per-Path Quantization**: Configure different bit-widths for attention (3-bit) and expert (2-bit) layers
+- **MoE Support**: Automatic detection and optimization for mixture-of-experts architectures
+- **Lloyd-Max Calibration**: Optional codebook calibration for improved quantization accuracy
+- **Just Recipes**: Easy-to-use commands for quantization management (Available Quantization Profiles:
+  - tq3a-tq2e-g32 (attention: 3-bit, expert: 2-bit, group: 32)
+  - tq4a-tq4e-g32 (attention: 4-bit, expert: 4-bit, group: 32), Usage: just quant-apply <model> <profile>, etc.)
+- **Health Endpoint**: Extended  endpoint with quantization status
+
 ### Quick Start
+
+1. List available quantization profiles:
+   Available Quantization Profiles:
+  - tq3a-tq2e-g32 (attention: 3-bit, expert: 2-bit, group: 32)
+  - tq4a-tq4e-g32 (attention: 4-bit, expert: 4-bit, group: 32)
+
+2. Apply quantization to a model:
+   Applying quantization profile 'tq3a-tq2e-g32' to model '/Users/wilsonm/.cache/huggingface/hub/Nemotron-3-Super-120B-A12B'...
+
+3. Check quantization status:
+   Quantization Status:
+{
+  "profile": null,
+  "attention_bits": null,
+  "expert_bits": null,
+  "group_size": null,
+  "model_architecture": null,
+  "is_moe": false,
+  "expert_count": 0,
+  "active_params": null,
+  "total_params": null
+}
+
+For detailed documentation, see [OPERATIONS.md](OPERATIONS.md#quantization-management-spec-007).
+
+## Quick Start
 
 ```bash
 # Initialize environment

@@ -1246,3 +1246,78 @@ When adding a new recipe to `justfile`:
 - [Governance](GOVERNANCE.md) - Project constitution and standards
 - [Contributing](CONTRIBUTING.md) - Contribution guidelines and development workflow
 - [Security Validation](docs/security-validation.md) - Security patterns and helpers
+
+## Quantization Management (Spec 007)
+
+The following just recipes are available for managing per-path hybrid quantization:
+
+### List Available Quantization Profiles
+
+```bash
+just quant-list
+```
+
+Lists all available quantization profiles from `scripts/wrapper-config/profiles.yaml`.
+
+### Validate a Quantization Profile
+
+```bash
+just quant-validate <profile>
+```
+
+Validates a quantization profile for syntax and compatibility. Exit codes: 0 (success), 1 (validation failed).
+
+### Apply Quantization to a Model
+
+```bash
+just quant-apply <model> <profile>
+```
+
+Applies a quantization profile to a model. Validates profile, detects model architecture, applies per-path quantization, and updates `.active-model`.
+
+### Check Quantization Status
+
+```bash
+just quant-status
+```
+
+Displays current quantization configuration for the active model, including profile, bit-widths, and model architecture details.
+
+### Run Lloyd-Max Calibration
+
+```bash
+just quant-calibrate <dataset> <output>
+```
+
+Runs Lloyd-Max calibration with provided dataset to generate optimized codebooks for better quantization accuracy.
+
+### Using Quantization with Model Management
+
+```bash
+# Activate a model profile with quantization
+uv run python scripts/model-management.py use <profile> --quant-profile tq3a-tq2e-g32
+
+# Or use environment variable
+export MLX_QUANT_PROFILE=tq3a-tq2e-g32
+just mlx-start
+```
+
+### Health Endpoint
+
+The health endpoint (`/health`) now includes quantization status:
+
+```json
+{
+  "quantization": {
+    "profile": "tq3a-tq2e-g32",
+    "attention_bits": 3,
+    "expert_bits": 2,
+    "group_size": 32,
+    "model_architecture": "Nemotron-3-Super-120B-A12B",
+    "is_moe": true,
+    "expert_count": 12,
+    "active_params": 12000000000,
+    "total_params": 120000000000
+  }
+}
+```

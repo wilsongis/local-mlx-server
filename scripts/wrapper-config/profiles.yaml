@@ -71,6 +71,31 @@ profiles:
       max_tokens: 4096
       batch_size: 1
 
+# Quantization Profiles for Per-Path Hybrid Quantization
+# Defines presets for different bit-widths per layer type (attention vs expert)
+quantization_profiles:
+  tq3a-tq2e-g32:
+    version: "1.0.0"
+    preset_name: "tq3a-tq2e-g32"
+    attention_bits: 3
+    expert_bits: 2
+    group_size: 32
+    calibration_method: "none"
+    model_patterns:
+      - ".*nemotron.*120b.*"
+      - ".*120b.*moe.*"
+    description: "3-bit attention, 2-bit expert, group size 32 (MVP preset for 120B+ MoE models)"
+  tq4a-tq4e-g32:
+    version: "1.0.0"
+    preset_name: "tq4a-tq4e-g32"
+    attention_bits: 4
+    expert_bits: 4
+    group_size: 32
+    calibration_method: "none"
+    model_patterns:
+      - ".*"
+    description: "Uniform 4-bit quantization for attention and expert layers (balanced preset)"
+
 # API key configuration (optional, leave empty to disable auth on admin endpoints)
 api_key: ""
 # api_key_env_var: "MLX_WRAPPER_API_KEY"  # Uncomment to read from environment variable

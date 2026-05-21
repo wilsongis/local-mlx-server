@@ -29,6 +29,25 @@ presets:
     batch_size: 1
     description: "Higher quality with 8-bit KV cache, requires 52GB+ memory"
 
+  # Per-Path Hybrid Quantization Presets (New for Spec 007)
+  - name: "120b-moe-mvp"
+    target_memory_gb: 48
+    model_size_class: "120B+ MoE"
+    quantization_profile: "tq3a-tq2e-g32"
+    kv_cache_bits: 4
+    max_context_length: 2048
+    batch_size: 1
+    description: "MVP preset for 120B+ MoE models: 3-bit attention, 2-bit expert, group 32"
+
+  - name: "120b-uniform"
+    target_memory_gb: 50
+    model_size_class: "120B+"
+    quantization_profile: "tq4a-tq4e-g32"
+    kv_cache_bits: 4
+    max_context_length: 2048
+    batch_size: 1
+    description: "Uniform 4-bit quantization for all layers (attention and expert)"
+
 # Memory warning thresholds (optional)
 memory_warnings:
   critical_gb: 2  # Warn if less than 2GB available
