@@ -117,6 +117,55 @@ This repository now supports per-path hybrid quantization for MLX models on Appl
 
 For detailed documentation, see [OPERATIONS.md](OPERATIONS.md#quantization-management-spec-007).
 
+## KV Cache Compression (Spec 008)
+
+This repository now supports KV cache compression for MLX-based inference on Apple Silicon, reducing KV cache memory usage by 3-5x to enable 120B+ models on 48GB systems.
+
+### Key Features
+
+- **Two Compression Paths**: Speed-optimized (V2, ~105% FP16 speed) and quality-optimized (V3, 4x+ compression)
+- **Automatic Profile Selection**: Based on model size class and weight quantization (double-compression rules)
+- **Double-Compression Support**: Combined weight + KV cache compression with tolerance rules
+- **Just Recipes**: Easy-to-use commands for compression management:
+  - `just kv-status` - Show compression status
+  - `just kv-enable [profile] [bits]` - Enable compression (auto/v2-speed/v3-quality)
+  - `just kv-disable` - Disable compression
+  - `just kv-list-profiles` - List available profiles
+- **Health Endpoint**: Compression status reported via `/health` endpoint
+- **Fallback Support**: Graceful degradation to uncompressed cache on initialization failure
+
+### Compression Paths
+
+| Path | Profile | Speed | Compression | Quality | Use Case |
+|------|---------|-------|-------------|---------|----------|
+| V2 | v2-speed | ~105% FP16 | 3.6x | Within 2% of FP16 | Speed-critical applications |
+| V3 | v3-quality | ~90% FP16 | 4.1-5.5x | Within 2% of FP16 | Memory-critical applications |
+| Auto | auto | Depends on selection | 3-4x | Within 2% of FP16 | General use (recommended) |
+
+### Quick Start
+
+1. Check KV cache compression status:
+   ```bash
+   just kv-status
+   ```
+
+2. Enable compression with auto profile (recommended):
+   ```bash
+   just kv-enable auto 3
+   ```
+
+3. Start server with compression:
+   ```bash
+   just server-start
+   ```
+
+4. Verify compression is active:
+   ```bash
+   curl http://localhost:8080/health | jq '.kv_cache_compression'
+   ```
+
+For detailed documentation, see [Operations Guide - KV Cache Compression](OPERATIONS.md#kv-status).
+
 ## Quick Start
 
 ```bash

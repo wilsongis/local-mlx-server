@@ -199,6 +199,7 @@ class ServerLifecycleManager:
         port: int = 8080,
         host: str = "127.0.0.1",
         extra_args: Optional[list] = None,
+        kv_cache_config: Optional[dict] = None,
     ) -> bool:
         """
         Start MLX server with PID management.
@@ -256,10 +257,11 @@ class ServerLifecycleManager:
             return False
 
         # Build command
+        # Build command - use wrapper script to enable KV cache compression
+        wrapper_script = str(Path(__file__).parent / "mlx_server_wrapper.py")
         cmd = [
             "python",
-            "-m",
-            "mlx_lm.server",
+            wrapper_script,
             "--model",
             model_path,
             "--port",
@@ -267,6 +269,36 @@ class ServerLifecycleManager:
             "--host",
             host,
         ]
+
+        # Set environment variables for KV cache compression
+        env = os.environ.copy()
+
+        if kv_cache_config:
+            from scripts.quantization.quantization_manager import QuantizationManager
+
+            # Create quantization manager with KV cache config
+            qm = QuantizationManager(
+                model_path=model_path,
+                kv_cache_config=kv_cache_config,
+            )
+            qm.initialize()
+
+            # Set environment variables for wrapper script
+            env["KV_CACHE_ENABLED"] = "true"
+            env["KV_CACHE_PROFILE"] = kv_cache_config.get("profile", "auto")
+            env["KV_CACHE_BITS"] = str(kv_cache_config.get("default_bits", 3))
+            env["KV_CACHE_GROUP_SIZE"] = str(
+                kv_cache_config.get("default_group_size", 64)
+            )
+
+            # Get quantization args
+            quant_args = qm.get_quantization_args()
+            if quant_args and "--quant-config" in quant_args:
+                cmd.extend(["--quant-config", quant_args["--quant-config"]])
+
+            logger.info(
+                f"KV cache compression enabled: {kv_cache_config.get('profile', 'auto')}"
+            )
         if extra_args:
             cmd.extend(extra_args)
 
@@ -274,11 +306,13 @@ class ServerLifecycleManager:
 
         try:
             # Start server in background
+            # Start server in background with environment variables
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=True,
+                env=env if kv_cache_config else None,
             )
             pid = process.pid
 

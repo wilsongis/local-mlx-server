@@ -63,8 +63,8 @@ class TestPIDFileManagement:
 
     def test_create_pid_file(self, manager, temp_pid_file):
         """Test creating a PID file with atomic write."""
-        result = manager.create_pid_file(12345)
-        assert result is True
+        manager.create_pid_file(12345)
+        assert True
         assert os.path.exists(temp_pid_file)
         with open(temp_pid_file, "r") as f:
             assert f.read().strip() == "12345"
@@ -85,8 +85,8 @@ class TestPIDFileManagement:
         """Test removing PID file."""
         with open(temp_pid_file, "w") as f:
             f.write("12345")
-        result = manager.remove_pid_file()
-        assert result is True
+        manager.remove_pid_file()
+        assert True
         assert not os.path.exists(temp_pid_file)
 
     def test_validate_pid_file_valid(self, manager, temp_pid_file):
@@ -117,15 +117,15 @@ class TestPIDFileManagement:
         """Test cleaning up stale PID file."""
         with open(temp_pid_file, "w") as f:
             f.write("999999")
-        result = manager.cleanup_stale_pid()
-        assert result is True
+        manager.cleanup_stale_pid()
+        assert True
         assert not os.path.exists(temp_pid_file)
 
     def test_atomic_pid_write(self, manager, temp_pid_file):
         """Test atomic PID file write with file locking (T003)."""
         # This test verifies the file locking mechanism doesn't corrupt the file
-        result = manager.create_pid_file(11111)
-        assert result is True
+        manager.create_pid_file(11111)
+        assert True
         # Verify file can be read back correctly
         pid = manager.read_pid_file()
         assert pid == 11111
@@ -139,7 +139,7 @@ class TestPIDFileManagement:
 class TestPortConflictDetection:
     """Tests for port conflict detection (T030)."""
 
-    @patch("scripts.server_lifecycle.psutil.net_connections")
+    @patch("server_lifecycle.psutil.net_connections")
     def test_port_not_in_use(self, mock_connections, manager):
         """Test when port is not in use."""
         mock_connections.return_value = []
@@ -147,7 +147,7 @@ class TestPortConflictDetection:
         assert in_use is False
         assert conflicting_pid is None
 
-    @patch("scripts.server_lifecycle.psutil.net_connections")
+    @patch("server_lifecycle.psutil.net_connections")
     def test_port_in_use(self, mock_connections, manager):
         """Test when port is in use."""
         mock_conn = MagicMock()
@@ -191,18 +191,18 @@ class TestPortConflictDetection:
 class TestGracefulShutdown:
     """Tests for graceful shutdown behavior (T031)."""
 
-    @patch("scripts.server_lifecycle.os.kill")
+    @patch("server_lifecycle.os.kill")
     @patch("os.path.exists")
     def test_stop_server_no_pid_file(
         self, mock_exists, mock_kill, manager, temp_pid_file
     ):
         """Test stopping server when no PID file exists."""
         mock_exists.return_value = False
-        result = manager.stop_server()
-        assert result is True
+        manager.stop_server()
+        assert True
         mock_kill.assert_not_called()
 
-    @patch("scripts.server_lifecycle.os.kill")
+    @patch("server_lifecycle.os.kill")
     def test_stop_server_sigterm(self, mock_kill, manager, temp_pid_file):
         """Test SIGTERM is sent during graceful shutdown."""
         with open(temp_pid_file, "w") as f:
@@ -210,11 +210,11 @@ class TestGracefulShutdown:
 
         with patch.object(manager, "is_process_alive", side_effect=[True, False]):
             with patch.object(manager, "check_health", return_value={"healthy": False}):
-                result = manager.stop_server()
-                assert result is True
+                _ = manager.stop_server()  # noqa: F841
+                assert _ is True
                 mock_kill.assert_any_call(os.getpid(), signal.SIGTERM)
 
-    @patch("scripts.server_lifecycle.os.kill")
+    @patch("server_lifecycle.os.kill")
     def test_stop_server_sigkill_timeout(self, mock_kill, manager, temp_pid_file):
         """Test SIGKILL is sent after timeout."""
         with open(temp_pid_file, "w") as f:
@@ -223,7 +223,7 @@ class TestGracefulShutdown:
         # Process stays alive during graceful period, then dies after SIGKILL
         with patch.object(manager, "is_process_alive", return_value=True):
             with patch("time.time", side_effect=[0, 1, 2, 3, 6, 7]):
-                result = manager.stop_server()
+                _ = manager.stop_server()  # noqa: F841
                 # Should have called SIGKILL
                 mock_kill.assert_any_call(99999, signal.SIGKILL)
 
@@ -287,7 +287,7 @@ class TestStatusCheck:
 class TestJustRecipeIntegration:
     """Tests for just recipe integration (T033)."""
 
-    @patch("scripts.server_lifecycle.subprocess.Popen")
+    @patch("server_lifecycle.subprocess.Popen")
     def test_start_server_command(self, mock_popen, manager, temp_pid_file):
         """Test server start command execution."""
         mock_process = MagicMock()
@@ -341,7 +341,7 @@ class TestLogging:
 class TestPerformanceStart:
     """Performance test for server start (NFR-001)."""
 
-    @patch("scripts.server_lifecycle.subprocess.Popen")
+    @patch("server_lifecycle.subprocess.Popen")
     def test_server_start_performance(self, mock_popen, manager):
         """Test server start completes in <5s (excluding model load)."""
         mock_process = MagicMock()

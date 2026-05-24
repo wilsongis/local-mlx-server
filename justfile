@@ -12,6 +12,11 @@ SERVER_PID_FILE := "/tmp/mlx-server.pid"
 SERVER_GRACEFUL_TIMEOUT := "30"
 SERVER_LOG_LEVEL := "INFO"
 
+# KV Cache Compression Configuration
+KV_CACHE_PROFILE := "auto"
+KV_CACHE_BITS := "3"
+KV_CACHE_GROUP_SIZE := "64"
+
 # ------------------------------------------------------------------------------
 # 1. CORE EXECUTION
 # ------------------------------------------------------------------------------
@@ -127,9 +132,9 @@ security-check:
 # ------------------------------------------------------------------------------
 
 # Start MLX server with lifecycle management (PID file, port conflict detection)
-server-start MODEL_PATH="{{MODEL_PATH}}":
+server-start MODEL_PATH="{{MODEL_PATH}}" KV_PROFILE="{{KV_CACHE_PROFILE}}":
     @echo "Starting MLX server with lifecycle management..."
-    @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --model {{MODEL_PATH}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
+    @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --model {{MODEL_PATH}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}} --kv-cache-profile {{KV_PROFILE}}
 
 # Stop MLX server with graceful shutdown (SIGTERM -> wait -> SIGKILL)
 server-stop:
@@ -137,8 +142,8 @@ server-stop:
     @uv run python scripts/server-lifecycle.py stop --pid-file {{SERVER_PID_FILE}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
 
 # Check MLX server status (process, health, uptime)
-server-status:
-    @uv run python scripts/server-lifecycle.py status --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}}
+server-status JSON_FLAG="":
+    @uv run python scripts/server-lifecycle.py status --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} {{JSON_FLAG}}
 
 # Configure server lifecycle settings (display current configuration)
 server-config:
@@ -150,8 +155,14 @@ server-config:
     @echo "  Host: {{HOST}}"
     @echo "  Port: {{PORT}}"
     @echo ""
+    @echo "KV Cache Compression Configuration:"
+    @echo "  Profile: {{KV_CACHE_PROFILE}}"
+    @echo "  Bits: {{KV_CACHE_BITS}}"
+    @echo "  Group Size: {{KV_CACHE_GROUP_SIZE}}"
+    @echo ""
     @echo "To change defaults, edit these variables at the top of the justfile:"
     @echo "  SERVER_PID_FILE, SERVER_GRACEFUL_TIMEOUT, SERVER_LOG_LEVEL, MODEL_PATH, HOST, PORT"
+    @echo "  KV_CACHE_PROFILE, KV_CACHE_BITS, KV_CACHE_GROUP_SIZE"
 
 # ------------------------------------------------------------------------------
 # 6. MODEL MANAGEMENT
@@ -183,7 +194,7 @@ mlx-start-check:
     @uv run python scripts/server-lifecycle.py start --pid-file {{SERVER_PID_FILE}} --port {{PORT}} --host {{HOST}} --log-level {{SERVER_LOG_LEVEL}} --graceful-timeout {{SERVER_GRACEFUL_TIMEOUT}}
 
 # ------------------------------------------------------------------------------
-# 6. QUANTIZATION MANAGEMENT (Spec 007)
+# 7. QUANTIZATION MANAGEMENT (Spec 007)
 # ------------------------------------------------------------------------------
 
 # List available quantization profiles
@@ -210,3 +221,32 @@ quant-calibrate DATASET="" OUTPUT="":
     @if [ -z "{{DATASET}}" ] || [ -z "{{OUTPUT}}" ]; then echo "Usage: just quant-calibrate <dataset> <output>"; exit 1; fi
     @echo "Running Lloyd-Max calibration with dataset: {{DATASET}}"
     @uv run python -c "from scripts.quantization.lloyd_max import LloydMaxCalibrator; import numpy as np; calibrator = LloydMaxCalibrator(bits=3, group_size=32); data = calibrator.load_calibration_data('{{DATASET}}'); codebook = calibrator.generate_codebook(data); path = calibrator.save_codebook('{{OUTPUT}}'); print(f'Codebook generated: {path}'); print(f'Perplexity improvement: {calibrator.perplexity_improvement:.2f}%')"
+
+# ------------------------------------------------------------------------------
+# 8. KV CACHE COMPRESSION (Spec 008)
+# ------------------------------------------------------------------------------
+
+# Show KV cache compression status
+kv-status:
+    @uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; import json; manager = KVCacheCompressionManager({'enabled': True, 'profile': '{{KV_CACHE_PROFILE}}'}); status = manager.get_status(); print('KV Cache Compression Status:'); print(json.dumps(status, indent=2))"
+
+# Enable KV cache compression with specified profile
+kv-enable PROFILE="{{KV_CACHE_PROFILE}}" BITS="{{KV_CACHE_BITS}}" GROUP_SIZE="{{KV_CACHE_GROUP_SIZE}}":
+    @echo "Enabling KV cache compression with profile: {{PROFILE}}..."
+    @echo "  Bits: {{BITS}}"
+    @echo "  Group Size: {{GROUP_SIZE}}"
+    @uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; manager = KVCacheCompressionManager({'enabled': True, 'profile': '{{PROFILE}}', 'default_bits': {{BITS}}, 'default_group_size': {{GROUP_SIZE}}}); manager.enable('{{PROFILE}}'); print(f'KV cache compression enabled with profile: {{PROFILE}}')"
+
+# Disable KV cache compression
+kv-disable:
+    @echo "Disabling KV cache compression..."
+    @uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; manager = KVCacheCompressionManager({'enabled': False}); manager.disable(); print('KV cache compression disabled')"
+
+# List available KV cache profiles
+kv-list-profiles:
+    @uv run python -c "import yaml; data = yaml.safe_load(open('scripts/wrapper-config/kv-cache-profiles.yaml')); profiles = data.get('kv_cache_profiles', {}); print('Available KV Cache Profiles:'); [print(f'  - {k}: {v.get(\"description\", \"\")}') for k, v in profiles.items()]"
+
+# Validate KV cache profile configuration
+kv-validate PROFILE="{{KV_CACHE_PROFILE}}":
+    @echo "Validating KV cache profile: {{PROFILE}}..."
+    @uv run python -c "from scripts.quantization.config_builder import QuantizationConfigBuilder; from scripts.quantization.kv_cache_profiles import CompressionProfile; config = {'enabled': True, 'profile': '{{PROFILE}}'}; profile = QuantizationConfigBuilder.parse_kv_cache_config(config); print(f'Profile: {profile.name if profile else \"disabled\"}'); print(f'Path: {profile.path if profile else \"N/A\"}'); print(f'Bits: {profile.bits if profile else \"N/A\"}'); print(f'Valid: {profile is not None}')"

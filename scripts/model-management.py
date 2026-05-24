@@ -398,7 +398,6 @@ def main():
     )
 
     # Status command
-    status_parser = subparsers.add_parser("status", help="Show current active profile")
 
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate a model profile")

@@ -4,16 +4,64 @@ Configuration builder for generating MLX quantization config from QuantizationPr
 Generates YAML configuration files that can be passed to mlx_lm.server --quant-config.
 """
 
+import logging
 import os
 from typing import Any, Dict, Optional
 
 import yaml
 
+from .kv_cache_profiles import (
+    V2_SPEED_PROFILE,
+    V3_QUALITY_PROFILE,
+    CompressionProfile,
+    create_auto_profile,
+)
 from .profile_validator import ProfileValidationError, QuantizationProfile
+
+logger = logging.getLogger(__name__)
 
 
 class QuantizationConfigBuilder:
     """Builds MLX quantization configuration from QuantizationProfile."""
+
+    @staticmethod
+    def parse_kv_cache_config(kv_cache_config: dict) -> Optional[CompressionProfile]:
+        """Parse KV cache configuration from profiles.yaml.
+
+        Args:
+            kv_cache_config: Dict with keys: enabled, profile, default_bits,
+                               default_group_size, fallback_on_error
+
+        Returns:
+            CompressionProfile based on configuration, or None if disabled
+        """
+        if not kv_cache_config.get("enabled", False):
+            logger.debug("KV cache compression disabled in config")
+            return None
+
+        profile_name = kv_cache_config.get("profile", "auto")
+
+        if profile_name == "auto":
+            profile = create_auto_profile()
+        elif profile_name == "v2-speed":
+            profile = V2_SPEED_PROFILE
+        elif profile_name == "v3-quality":
+            profile = V3_QUALITY_PROFILE
+        else:
+            # Load from kv_cache_profiles.yaml (not implemented yet)
+            logger.warning(f"Custom profile '{profile_name}' not found, using auto")
+            profile = create_auto_profile()
+
+        # Override defaults with config values
+        if "default_bits" in kv_cache_config:
+            profile.bits = kv_cache_config["default_bits"]
+        if "default_group_size" in kv_cache_config:
+            profile.group_size = kv_cache_config["default_group_size"]
+
+        logger.info(
+            f"Parsed KV cache config: profile={profile.name}, bits={profile.bits}"
+        )
+        return profile
 
     def __init__(self, profile: QuantizationProfile):
         """

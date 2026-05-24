@@ -1,0 +1,52 @@
+# KV Cache Compression Profiles
+# Defines named compression profiles for KV cache optimization
+
+kv_cache_profiles:
+  # V2 Speed-Optimized Profile
+  # Uses Metal-accelerated operations for ~105% FP16 speed with 3.6x compression
+  v2-speed:
+    path: "v2"
+    bits: 3
+    group_size: 64
+    use_metal: true
+    hadamard_rotation: true
+    codebook_type: "uniform"
+    target_model_size: "any"
+    description: "Speed-optimized path with Metal acceleration (~105% FP16 speed)"
+
+  # V3 Quality-Optimized Profile
+  # Uses Lloyd-Max codebook for 4.1-5.5x compression with <2% quality loss
+  v3-quality:
+    path: "v3"
+    bits: 3
+    group_size: 64
+    use_metal: true  # with CPU fallback
+    hadamard_rotation: true
+    codebook_type: "lloyd-max"
+    target_model_size: "any"
+    description: "Quality-optimized path with Lloyd-Max codebook (4x+ compression)"
+
+  # Auto Profile
+  # Automatically selects optimal strategy based on model size and weight quantization
+  # Rules applied at runtime:
+  # - 20B + 3-bit weights → 4-bit KV (double-compression)
+  # - 100B+ + 3-bit weights → 3-bit KV (double-compression)
+  # - FP16 weights → 3-bit KV (baseline)
+  auto:
+    path: "auto"
+    bits: 3
+    group_size: 64
+    use_metal: true
+    hadamard_rotation: true
+    codebook_type: "uniform"  # Determined at runtime
+    target_model_size: "any"
+    description: "Automatic profile selection based on model size class"
+
+# Default profile to use when not specified
+default_profile: "auto"
+
+# Global settings
+settings:
+  fallback_on_error: true
+  compression_mode_switching: true  # Allow switching without restart
+  status_reporting: true  # Report compression status via health endpoint

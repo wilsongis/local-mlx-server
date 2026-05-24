@@ -53,7 +53,7 @@
 ## ⚡ TurboQuant & Quantization Specs
 
 ### Weight Compression
-- [ ] **QUANT-001**: Create per-path hybrid quantization spec via `/speckit.specify`
+- [x] **QUANT-001**: Create per-path hybrid quantization spec via `/speckit.specify`
   - Implement 3-bit attention / 2-bit expert configuration (tq3a-tq2e g32)
   - Add support for latent-MoE architectures (Nemotron-3-Super-120B-A12B)
   - Design calibration-data Lloyd-Max codebook option (Phase 2 from research)
@@ -149,6 +149,48 @@
   - Design containerized test workflow
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
+- [ ] **DEPS-003**: Create offline dependency bundle spec via `/speckit.specify`
+  - Build reproducible offline wheelhouse for MLX/TurboQuant stack (`uv export` + wheel cache)
+  - Add `just deps-bundle` and `just deps-install-offline` recipes for air-gapped recovery
+  - Validate install path with network disabled on clean Apple Silicon environment
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+---
+
+## 🧭 Offline Reliability & Runtime Policy Specs
+
+### Critical Offline Productivity
+- [ ] **OFFLINE-001**: Create offline model artifact mirror spec via `/speckit.specify`
+  - Define local mirror layout for model weights, tokenizer files, and model cards
+  - Add `just models-mirror` and `just models-verify` recipes with checksums/manifests
+  - Validate cold-start recovery when internet is unavailable
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **OFFLINE-002**: Create startup preflight and degraded-mode spec via `/speckit.specify`
+  - Add preflight checks for memory budget, wired-limit constraints, disk space, and dependency integrity
+  - Implement deterministic fallback profile selection when target profile exceeds available memory
+  - Add `just preflight` and `just preflight-offline` recipes for repeatable launch validation
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **OFFLINE-003**: Create local runbook snapshot spec via `/speckit.specify`
+  - Persist last-known-good runtime settings (profile, sampler, cache bits, context)
+  - Add `just runbook-snapshot` and `just runbook-restore` for fast offline recovery
+  - Capture failure fingerprints (OOM, Metal memory faults, kernel dispatch errors) with remediation hints
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+### Runtime Quantization Policy
+- [ ] **QUANT-005**: Create runtime policy engine spec via `/speckit.specify`
+  - Encode prompt-aware sampler rules (numeric prompts disable repetition penalty)
+  - Enforce model-scale KV policy (small models: 4-bit KV on 3-bit weights; 100B+: 3-bit KV)
+  - Add profile-safe defaults for `min_tokens` on think-enabled models to avoid premature EOS
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **QUANT-006**: Create KV compatibility hardening spec via `/speckit.specify`
+  - Validate prompt-first cache conversion pipeline before generation begins
+  - Add compatibility checks for attention sinks and hybrid cache types (KVCache/RotatingKVCache/ArraysCache)
+  - Add explicit fallback behavior when quantized SDPA paths are incompatible
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
 ---
 
 ## 📊 Monitoring & Observability Specs
@@ -164,6 +206,12 @@
   - Design text-based dashboard for `just server-status`
   - Add model performance summary (tokens/sec, memory, quantization config)
   - Implement alerting for memory pressure conditions
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **OBS-003**: Create offline incident telemetry spec via `/speckit.specify`
+  - Capture structured local telemetry for OOM, wired-limit, and kernel dispatch failures
+  - Add rolling benchmark deltas for tokens/sec, peak memory, and quality checks per profile
+  - Expose `just incidents-tail` and `just incidents-report` for offline triage
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 ---
@@ -191,6 +239,24 @@
   - Add `bits_for_path()` auto-tuning from validation set
   - Implement Pareto-optimal bit-width curves (quality vs memory)
   - Account for head_dim: D=256 models (Gemma) tolerate lower bits than D=128 (Llama)
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **FUTURE-004**: Create incremental KV dequantization spec via `/speckit.specify`
+  - Cache dequantized segments and process only newly appended tokens to reduce per-step overhead
+  - Benchmark memory/speed tradeoff on 20B, 32B, 120B, and 122B profiles
+  - Define fallback to full-step dequantization when memory headroom is low
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **FUTURE-005**: Create embedding quantization spec via `/speckit.specify`
+  - Quantize embedding/output layers with quality guardrails for smaller models
+  - Measure size-quality impact for 1B-7B where embeddings dominate footprint
+  - Add selective opt-out for models that regress on instruction-following quality
+  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+- [ ] **FUTURE-006**: Create external quantizer parity benchmark spec via `/speckit.specify`
+  - Run controlled comparisons vs GPTQ and AWQ on MoE and dense models
+  - Report quality/speed/memory/cost curves with identical prompts and context lengths
+  - Add publishable benchmark template for repeatable future comparisons
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 ---

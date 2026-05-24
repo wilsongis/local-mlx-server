@@ -15,14 +15,14 @@ import pytest
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from scripts.quantization.config_builder import QuantizationConfigBuilder
-from scripts.quantization.model_detector import ModelArchitecture, ModelDetector
-from scripts.quantization.profile_validator import (
+from scripts.quantization.config_builder import QuantizationConfigBuilder  # noqa: E402
+from scripts.quantization.model_detector import ModelArchitecture, ModelDetector  # noqa: E402
+from scripts.quantization.profile_validator import (  # noqa: E402
     ProfileValidationError,
     ProfileValidator,
     QuantizationProfile,
 )
-from scripts.quantization.quantization_manager import QuantizationManager
+from scripts.quantization.quantization_manager import QuantizationManager  # noqa: E402
 
 
 class TestQuantizationIntegration:

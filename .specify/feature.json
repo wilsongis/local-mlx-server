@@ -1,3 +1,3 @@
 {
-  "feature_directory": "specs/007-hybrid-quantization"
+  "feature_directory": "specs/008-kv-cache-compression"
 }

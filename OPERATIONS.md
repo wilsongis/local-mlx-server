@@ -37,7 +37,12 @@ This section documents all `just` recipes with command syntax, required argument
 | `just server-start` | Start MLX server with lifecycle management (PID, port conflict) | [server-start](#server-start) |
 | `just server-stop` | Stop MLX server with graceful shutdown (SIGTERM -> SIGKILL) | [server-stop](#server-stop) |
 | `just server-status` | Check server status (process, health, uptime) | [server-status](#server-status) |
-| `just server-config` | Display server lifecycle configuration | [server-config](#server-config) |
+| `just server-config` | Display server lifecycle configuration | [server-config](#server-config)(#server-config) |
+| `just kv-status` | Show KV cache compression status | [kv-status](#kv-status) |
+| `just kv-enable` | Enable KV cache compression with profile | [kv-enable](#kv-enable) |
+| `just kv-disable` | Disable KV cache compression | [kv-disable](#kv-disable) |
+| `just kv-list-profiles` | List available KV cache profiles | [kv-list-profiles](#kv-list-profiles) |
+| `just kv-validate` | Validate KV cache profile configuration | [kv-validate](#kv-validate) |
 
 ---
 
@@ -727,6 +732,252 @@ To change defaults, edit these variables at the top of the justfile:
 - **Configuration not set**: Shows default values from justfile.
 
 ---
+---
+
+### kv-status
+
+**Description**: Show current KV cache compression status.
+
+**Syntax**:
+```bash
+just kv-status
+```
+
+**Examples**:
+```bash
+# Check compression status
+$ just kv-status
+KV Cache Compression Status:
+{
+  "enabled": true,
+  "available": true,
+  "active": true,
+  "profile": "auto",
+  "profile_path": "v2",
+  "bits": 3,
+  "model_size_class": "100B+",
+  "weight_bits": 3,
+  "fallback_on_error": true
+}
+```
+
+**Edge Cases**:
+- **Compression not available**: Shows `"available": false` if `turboquant-mlx` not installed.
+- **Compression disabled**: Shows `"enabled": false`.
+- **No model loaded**: Shows `"model_size_class": null`.
+
+---
+
+### kv-enable
+
+**Description**: Enable KV cache compression with specified profile.
+
+**Syntax**:
+```bash
+just kv-enable PROFILE="auto" BITS=3 GROUP_SIZE=64
+```
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `PROFILE` | string | No | Compression profile: "auto", "v2-speed", "v3-quality" (default: "auto") |
+| `BITS` | int | No | Bit-width for compression: 2, 3, or 4 (default: 3) |
+| `GROUP_SIZE` | int | No | Elements per normalization group, must be power of 2 (default: 64) |
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KV_CACHE_PROFILE` | `auto` | Compression profile to use |
+| `KV_CACHE_BITS` | `3` | Bit-width for KV cache quantization |
+| `KV_CACHE_GROUP_SIZE` | `64` | Group size for RMS normalization |
+
+**Examples**:
+```bash
+# Enable with auto profile (recommended)
+$ just kv-enable auto 3
+Enabling KV cache compression with profile: auto...
+  Bits: 3
+  Group Size: 64
+
+# Enable speed-optimized path (V2)
+$ just kv-enable v2-speed 3
+Enabling KV cache compression with profile: v2-speed...
+
+# Enable quality-optimized path (V3)
+$ just kv-enable v3-quality 3
+Enabling KV cache compression with profile: v3-quality...
+```
+
+**Edge Cases**:
+- **Invalid profile**: Falls back to "auto" profile.
+- **Invalid bits**: Must be 2, 3, or 4 (validated by `CompressionProfile.__post_init__`).
+- **TurboQuant not available**: Prints error, compression remains disabled.
+
+---
+
+### kv-disable
+
+**Description**: Disable KV cache compression (revert to uncompressed KVCache).
+
+**Syntax**:
+```bash
+just kv-disable
+```
+
+**Examples**:
+```bash
+# Disable compression
+$ just kv-disable
+Disabling KV cache compression...
+KV cache compression disabled
+```
+
+**Edge Cases**:
+- **Compression already disabled**: No-op, prints status message.
+- **Server running**: Compression disabled for future prompts; existing compressed cache remains until restart.
+
+---
+
+### kv-list-profiles
+
+**Description**: List all available KV cache compression profiles.
+
+**Syntax**:
+```bash
+just kv-list-profiles
+```
+
+**Examples**:
+```bash
+$ just kv-list-profiles
+Available KV Cache Profiles:
+  - v2-speed: Speed-optimized path with Metal acceleration (~105% FP16 speed)
+  - v3-quality: Quality-optimized path with Lloyd-Max codebook (4x+ compression)
+  - auto: Automatic profile selection based on model size class
+```
+
+**Edge Cases**:
+- **No profiles defined**: Shows empty list (uses defaults).
+- **Custom profiles**: Displays all profiles from `kv-cache-profiles.yaml`.
+
+---
+
+### kv-validate
+
+**Description**: Validate a KV cache compression profile configuration.
+
+**Syntax**:
+```bash
+just kv-validate PROFILE="auto"
+```
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `PROFILE` | string | No | Profile name to validate (default: "auto") |
+
+**Examples**:
+```bash
+$ just kv-validate v2-speed
+Validating KV cache profile: v2-speed...
+Profile: v2-speed
+Path: v2
+Bits: 3
+Valid: True
+```
+
+**Edge Cases**:
+- **Invalid profile**: Shows "Valid: False" with error details.
+- **Missing config**: Uses defaults from `kv-cache-profiles.yaml`.
+
+---
+
+## KV Cache Compression Overview
+
+### What is KV Cache Compression?
+
+KV cache compression reduces the memory footprint of the attention key-value cache during inference. For large models (120B+ parameters) on memory-constrained Apple Silicon systems (48GB), the KV cache can consume 7-8 GB of memory. Compression reduces this by 3-5x, enabling larger models or longer context windows.
+
+### Compression Paths
+
+| Path | Profile | Speed | Compression | Quality | Use Case |
+|------|---------|-------|-------------|---------|----------|
+| V2 | v2-speed | ~105% FP16 | 3.6x | Within 2% of FP16 | Speed-critical applications |
+| V3 | v3-quality | ~90% FP16 | 4.1-5.5x | Within 2% of FP16 | Memory-critical applications |
+| Auto | auto | Depends on selection | 3-4x | Within 2% of FP16 | General use (recommended) |
+
+### Automatic Profile Selection (Double-Compression Rules)
+
+The "auto" profile selects the optimal compression strategy based on model size and weight quantization:
+
+| Model Size | Weight Bits | Recommended KV Bits | Reason |
+|------------|-------------|---------------------|--------|
+| ~20B | 3 (compressed) | **4-bit** | Avoid compounding noise |
+| ~20B | FP16 | 3-bit | Safe, good compression |
+| 100B+ | 3 (compressed) | **3-bit** | Redundancy absorbs noise |
+| 100B+ | FP16 | 3-bit | Maximum compression |
+
+**Key Finding**: 120B+ models tolerate aggressive double-compression (3-bit weights + 3-bit KV) and actually run *faster* due to reduced memory bandwidth.
+
+### Integration with Server Lifecycle
+
+KV cache compression integrates with the server lifecycle through environment variables:
+
+```bash
+# Start server with KV cache compression
+KV_CACHE_PROFILE=v2-speed just server-start
+
+# Or set defaults in justfile
+just server-start --kv-cache-profile v2-speed
+```
+
+The server will:
+1. Load model with weight quantization (if configured)
+2. Process prompt with full-precision KV cache
+3. Convert cache to TurboQuant format after prompt processing
+4. Continue generation with compressed KV cache
+
+### Health Endpoint
+
+Compression status is reported via the `/health` endpoint:
+
+```bash
+curl http://localhost:8080/health | jq '.kv_cache_compression'
+```
+
+Expected output:
+```json
+{
+  "enabled": true,
+  "profile": "auto",
+  "resolved_profile": "v3-quality",
+  "bits": 3,
+  "compression_ratio": 4.6,
+  "metal_accelerated": true
+}
+```
+
+### Troubleshooting
+
+**Compression not available**:
+```bash
+# Install TurboQuant MLX
+uv pip install turboquant-mlx-full
+```
+
+**Metal kernels fail to load**:
+```bash
+# Check Xcode tools
+xcode-select -p
+# Reinstall with verbose output
+uv pip install --force-reinstall turboquant-mlx-full -v
+```
+
+**Output quality degradation (repetition/drift)**:
+- Cause: Double-compression noise on small models
+- Fix: Use 4-bit KV with 3-bit weights for ~20B models
+- Verify: `just kv-validate <profile>`
+
 
 ### models-list
 

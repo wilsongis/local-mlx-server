@@ -11,15 +11,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from click.testing import CliRunner
 
 # Import the mlx_wrapper module
 scripts_dir = Path(__file__).parent.parent / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
 # Import directly from the module
-import mlx_wrapper
-from mlx_wrapper import health_app, update_health_status
+import mlx_wrapper  # noqa: E402
+from mlx_wrapper import health_app, update_health_status  # noqa: E402
 
 
 class TestHealthCheckAccuracy:
@@ -202,7 +201,7 @@ class TestHealthCheckAccuracyIntegration:
     @pytest.mark.skip(reason="Requires running MLX server - run manually")
     def test_real_server_health_check(self):
         """Test health check against real server (manual test)."""
-        runner = CliRunner()
+        # runner = CliRunner()  # noqa: F841 - kept for future use
         # This would require starting the actual server
         # For CI/CD, this test is skipped
         pass
