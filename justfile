@@ -231,11 +231,16 @@ kv-status:
     @uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; import json; manager = KVCacheCompressionManager({'enabled': True, 'profile': '{{KV_CACHE_PROFILE}}'}); status = manager.get_status(); print('KV Cache Compression Status:'); print(json.dumps(status, indent=2))"
 
 # Enable KV cache compression with specified profile
-kv-enable PROFILE="{{KV_CACHE_PROFILE}}" BITS="{{KV_CACHE_BITS}}" GROUP_SIZE="{{KV_CACHE_GROUP_SIZE}}":
-    @echo "Enabling KV cache compression with profile: {{PROFILE}}..."
-    @echo "  Bits: {{BITS}}"
-    @echo "  Group Size: {{GROUP_SIZE}}"
-    @uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; manager = KVCacheCompressionManager({'enabled': True, 'profile': '{{PROFILE}}', 'default_bits': {{BITS}}, 'default_group_size': {{GROUP_SIZE}}}); manager.enable('{{PROFILE}}'); print(f'KV cache compression enabled with profile: {{PROFILE}}')"
+kv-enable PROFILE="" BITS="" GROUP_SIZE="":
+    @bash -c ' \
+        PROFILE="${1:-{{KV_CACHE_PROFILE}}}"; \
+        BITS="${2:-{{KV_CACHE_BITS}}}"; \
+        GROUP_SIZE="${3:-{{KV_CACHE_GROUP_SIZE}}}"; \
+        echo "Enabling KV cache compression with profile: $PROFILE..."; \
+        echo "  Bits: $BITS"; \
+        echo "  Group Size: $GROUP_SIZE"; \
+        uv run python -c "from scripts.quantization.kv_cache_compression import KVCacheCompressionManager; manager = KVCacheCompressionManager({\"enabled\": True, \"profile\": \"$PROFILE\", \"default_bits\": $BITS, \"default_group_size\": $GROUP_SIZE}); manager.enable(\"$PROFILE\"); print(f\"KV cache compression enabled with profile: $PROFILE\")"; \
+    ' -- "{{PROFILE}}" "{{BITS}}" "{{GROUP_SIZE}}"
 
 # Disable KV cache compression
 kv-disable:
@@ -250,3 +255,32 @@ kv-list-profiles:
 kv-validate PROFILE="{{KV_CACHE_PROFILE}}":
     @echo "Validating KV cache profile: {{PROFILE}}..."
     @uv run python -c "from scripts.quantization.config_builder import QuantizationConfigBuilder; from scripts.quantization.kv_cache_profiles import CompressionProfile; config = {'enabled': True, 'profile': '{{PROFILE}}'}; profile = QuantizationConfigBuilder.parse_kv_cache_config(config); print(f'Profile: {profile.name if profile else \"disabled\"}'); print(f'Path: {profile.path if profile else \"N/A\"}'); print(f'Bits: {profile.bits if profile else \"N/A\"}'); print(f'Valid: {profile is not None}')"
+
+# ------------------------------------------------------------------------------
+# 9. ADMIN GUI
+# ------------------------------------------------------------------------------
+
+# Start Admin GUI on http://localhost:3000
+admin-gui:
+    @echo "Starting Admin GUI on http://localhost:3000..."
+    @uv run python -m gui.app
+
+# ------------------------------------------------------------------------------
+# 10. PREFLIGHT CHECKS (Spec 010)
+# ------------------------------------------------------------------------------
+
+# Run preflight checks (online - may query model registry)
+preflight MODEL_PATH="{{MODEL_PATH}}":
+    @echo "Running preflight checks for model: {{MODEL_PATH}}..."
+    @uv run python -c "from scripts.preflight.checker import PreflightChecker; import json; checker = PreflightChecker('{{MODEL_PATH}}'); result = checker.run_all_checks(); print(json.dumps({'overall_status': result.overall_status, 'checks': [{'name': c.name, 'status': c.status, 'details': c.details} for c in result.checks], 'block_startup': result.block_startup, 'degraded_mode': result.degraded_mode}, indent=2))"
+
+# Run preflight checks (offline - uses cached detection only)
+preflight-offline MODEL_PATH="{{MODEL_PATH}}":
+    @echo "Running offline preflight checks for model: {{MODEL_PATH}}..."
+    @echo "(Using cached model detection, no network calls)"
+    @uv run python -c "from scripts.preflight.checker import PreflightChecker; import json; checker = PreflightChecker('{{MODEL_PATH}}'); result = checker.run_all_checks(); print(json.dumps({'overall_status': result.overall_status, 'checks': [{'name': c.name, 'status': c.status, 'details': c.details} for c in result.checks], 'block_startup': result.block_startup, 'degraded_mode': result.degraded_mode}, indent=2))"
+
+# Run preflight and show human-readable output
+preflight-status MODEL_PATH="{{MODEL_PATH}}":
+    @echo "=== Preflight Check Status ==="
+    @uv run python -c "from scripts.preflight.checker import PreflightChecker; checker = PreflightChecker('{{MODEL_PATH}}'); result = checker.run_all_checks(); print(f'Overall Status: {result.overall_status}'); print(f'Block Startup: {result.block_startup}'); print(f'Degraded Mode: {result.degraded_mode}'); [print(f'  [{c.check_type.upper()}] {c.name}: {c.status} - {c.details}') for c in result.checks]"

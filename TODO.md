@@ -43,10 +43,26 @@
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
 - [x] **INFRA-003** (COMPLETED - Model Management): Create model management spec via `/speckit.specify`
-  - Design `just` recipes: `models-list`, `model-use <profile>`
-  - Implement model profile registry (Nemotron-120B-48GB, GPT-OSS-120B, Qwen3.5-122B)
-  - Add model path validation and disk space checks
-  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+   - Design `just` recipes: `models-list`, `model-use <profile>`
+   - Implement model profile registry (Nemotron-120B-48GB, GPT-OSS-120B, Qwen3.5-122B)
+   - Add model path validation and disk space checks
+   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+
+---
+
+## 🖥️ Admin GUI Specs
+
+### GUI Infrastructure
+- [x] **ADMIN-001** (COMPLETED - Admin GUI MVP): Create admin GUI MVP spec via `/speckit.specify`
+   - Implement lightweight Flask-based web UI in `gui/` directory
+   - Create `just admin-gui` recipe to start GUI on http://localhost:3000
+   - Add server status dashboard (running state, active model, uptime, memory usage)
+   - Add model management view (available models, active model, quantization profiles)
+   - Add basic controls (start/stop/restart server via `just` recipes)
+   - Add health display (last health check result, endpoint responsiveness)
+   - Implement services layer: `gui/services/server_control.py`, `gui/services/models.py`, `gui/services/status_monitor.py`, `gui/services/log_reader.py`
+   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+   - Implemented: `gui/app.py`, `gui/templates/`, `gui/static/`, `gui/services/`
 
 ---
 
@@ -60,15 +76,17 @@
   - Reference: [sharpner/turboquant-mlx](https://github.com/sharpner/turboquant-mlx) V3 Lloyd-Max implementation
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **QUANT-002**: Create KV cache compression spec via `/speckit.specify`
-  - Implement TurboQuant V2 (speed) and V3 (quality) paths for KV cache compression
-  - **V2 path**: Use `mx.quantized_matmul` (Metal-accelerated), 3.6x compression at ~105% FP16 speed
-  - **V3 path**: Lloyd-Max codebook (paper-correct), 4.1-5.5x compression, requires custom Metal kernels for speed
-  - Add hybrid attention support (KVCache, RotatingKVCache, ArraysCache)
-  - Design double-compression rules (3-bit weights + 4-bit KV for ~20B, 3-bit+3-bit for 100B+)
-  - **Key finding**: V2 3-bit rot+QJL beats FP16 on Gemma (D=256) by 1.1%, acts as regularizer
-  - Reference: [sharpner/turboquant-mlx](https://github.com/sharpner/turboquant-mlx), [arozanov/turboquant-mlx](https://github.com/arozanov/turboquant-mlx) for fused kernels
-  - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+- [x] **QUANT-002** (COMPLETED - KV Cache Compression): Create KV cache compression spec via `/speckit.specify`
+   - Implement TurboQuant V2 (speed) and V3 (quality) paths for KV cache compression
+   - **V2 path**: Use `mx.quantized_matmul` (Metal-accelerated), 3.6x compression at ~105% FP16 speed
+   - **V3 path**: Lloyd-Max codebook (paper-correct), 4.1-5.5x compression, requires custom Metal kernels for speed
+   - Add hybrid attention support (KVCache, RotatingKVCache, ArraysCache)
+   - Design double-compression rules (3-bit weights + 4-bit KV for ~20B, 3-bit+3-bit for 100B+)
+   - **Key finding**: V2 3-bit rot+QJL beats FP16 on Gemma (D=256) by 1.1%, acts as regularizer
+   - Reference: [sharpner/turboquant-mlx](https://github.com/sharpner/turboquant-mlx), [arozanov/turboquant-mlx](https://github.com/arozanov/turboquant-mlx) for fused kernels
+   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+   - Implemented: `scripts/quantization/kv_cache_compression.py`, `scripts/quantization/kv_cache_profiles.py`
+   - Just recipes: `kv-status`, `kv-enable`, `kv-disable`, `kv-list-profiles`, `kv-validate`
 
 - [ ] **QUANT-003**: Create quantization CLI integration spec via `/speckit.specify`
   - Wrap `turboquant-convert` with sensible defaults for Apple Silicon
@@ -166,11 +184,12 @@
   - Validate cold-start recovery when internet is unavailable
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
 
-- [ ] **OFFLINE-002**: Create startup preflight and degraded-mode spec via `/speckit.specify`
+- [x] **OFFLINE-002** (COMPLETED - Startup Preflight and Degraded Mode): Create startup preflight and degraded-mode spec via `/speckit.specify`
   - Add preflight checks for memory budget, wired-limit constraints, disk space, and dependency integrity
   - Implement deterministic fallback profile selection when target profile exceeds available memory
   - Add `just preflight` and `just preflight-offline` recipes for repeatable launch validation
   - Target: `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`
+  - Implemented: `scripts/preflight/checker.py` with `PreflightChecker`, `PreflightCheck`, `PreflightResult`, `DegradedModeConfig` dataclasses. `scripts/preflight/memory_check.py`, `scripts/preflight/disk_check.py`, `scripts/preflight/dependency_check.py`, `scripts/preflight/profile_fallback.py`. Just recipes: `preflight`, `preflight-offline`, `preflight-status`.
 
 - [ ] **OFFLINE-003**: Create local runbook snapshot spec via `/speckit.specify`
   - Persist last-known-good runtime settings (profile, sampler, cache bits, context)
@@ -263,11 +282,21 @@
 
 ## ✅ Completed Tasks
 
+- **INFRA-001** (MLX Server Wrapper): Implemented `scripts/mlx_wrapper.py` and `scripts/mlx_server_wrapper.py` with CLI interface, model profile selection, health monitoring, and preset configurations for 120B+ models. Added `just` recipes: `mlx-start`, `mlx-stop`, `mlx-status`, `mlx-health`, `mlx-list-profiles`, `mlx-list-presets`.
+
 - **INFRA-002** (Server Lifecycle Management): All 42 tasks completed in `specs/005-server-lifecycle-management/tasks.md`. Implemented `scripts/server-lifecycle.py` with PID management, port conflict resolution, graceful shutdown, and `just` recipes (`server-start`, `server-stop`, `server-status`). Verified with `tests/test_server_lifecycle.py`.
 
 - **INFRA-003** (Model Management): Implemented via spec 006-model-management. Created `scripts/model-management.py` (435 lines) with `ModelRegistry`, `ModelProfile`, `ValidationResult` classes, state file management with `flock` locking, and CLI commands. Added `just` recipes: `models-list`, `model-use`, `model-status`. Configured three model profiles in `scripts/wrapper-config/profiles.yaml` (nemotron-120b, gpt-oss-120b, qwen3.5-122b).
 
-*(Tasks will be moved here as they are completed via `/speckit.verify`)*
+- **QUANT-001** (Per-Path Hybrid Quantization): Implemented via spec 007-hybrid-quantization. Created `scripts/quantization/` module with `quantization_manager.py`, `config_builder.py`, `model_detector.py`, `lloyd_max.py`, `cli_helper.py`, and profile validation. Added `just` recipes: `quant-list`, `quant-validate`, `quant-apply`, `quant-status`, `quant-calibrate`. Supports per-path bit allocation (e.g., tq3a-tq2e-g32).
+
+- **QUANT-002** (KV Cache Compression): Implemented via spec 008-kv-cache-compression. Created `scripts/quantization/kv_cache_compression.py` and `scripts/quantization/kv_cache_profiles.py` with V2 (speed) and V3 (quality) compression paths. Added `just` recipes: `kv-status`, `kv-enable`, `kv-disable`, `kv-list-profiles`, `kv-validate`. Supports 3-5x KV cache compression for 120B+ models.
+
+- **ADMIN-001** (Admin GUI MVP): Implemented via spec 009-admin-gui-mvp. Created Flask-based web UI in `gui/` directory with server status dashboard, model management view, and basic controls. Implemented services layer (`gui/services/`) for server control, model management, status monitoring, and log reading. Added `just admin-gui` recipe to start GUI on http://localhost:3000.
+
+- **OFFLINE-002** (Startup Preflight and Degraded Mode): Implemented via spec 010-offline-002-startup. Created `scripts/preflight/` package with `PreflightChecker` orchestrator. Implemented preflight checks for memory budget (`memory_check.py`), disk space (`disk_check.py`), dependencies (`dependency_check.py`), and profile fallback (`profile_fallback.py`). Added `just preflight`, `just preflight-offline`, and `just preflight-status` recipes. Degraded mode support with reduced capabilities on non-critical failures. Profile safety detection blocks startup when unsafe (error code: `ERR-PROFILE-001`). Actionable remediation messages added to error output.
+
+*(Tasks are moved here as they are completed via `/speckit.verify`)*
 
 ---
 

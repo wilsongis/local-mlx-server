@@ -166,6 +166,102 @@ This repository now supports KV cache compression for MLX-based inference on App
 
 For detailed documentation, see [Operations Guide - KV Cache Compression](OPERATIONS.md#kv-status).
 
+## Admin GUI MVP (Spec 009)
+
+A lightweight Flask-based web interface for server visibility and control, accessible at http://localhost:3000 after starting the GUI.
+
+### Key Features
+
+- **Server Status Dashboard**: Running state, active model, uptime, memory usage
+- **Model Management View**: Available models, active model, quantization profiles
+- **Basic Controls**: Start/stop/restart server via `just` recipes
+- **Health Display**: Last health check result, endpoint responsiveness
+- **Log Viewer**: Real-time server log viewing with auto-refresh
+
+### Quick Start
+
+1. Start the Admin GUI:
+   ```bash
+   just admin-gui
+   ```
+
+2. Access the web interface at http://localhost:3000
+
+3. Use the dashboard to:
+   - View server status and health
+   - Switch between available model profiles
+   - Start/stop the server with one click
+   - Monitor logs in real-time
+
+### Architecture
+
+The GUI follows the project's governance rules by living in a separate `gui/` directory and calling `just` commands via a backend services layer:
+
+- `gui/app.py` - Flask application entry point
+- `gui/services/server_control.py` - Server start/stop/status via `just` recipes
+- `gui/services/models.py` - Model profile management
+- `gui/services/status_monitor.py` - Health and status monitoring
+- `gui/services/log_reader.py` - Server log reading
+- `gui/templates/` - Jinja2 HTML templates
+- `gui/static/` - CSS and JavaScript assets
+
+For detailed documentation, see:
+- [Admin GUI Specification](specs/009-admin-gui-mvp/spec.md)
+- [Admin GUI Plan](specs/009-admin-gui-mvp/plan.md)
+- [HTTP Endpoints Contract](specs/009-admin-gui-mvp/contracts/http-endpoints.md)
+- [Just Command Interface Contract](specs/009-admin-gui-mvp/contracts/just-command-interface.md)
+
+## Startup Preflight & Degraded Mode (Spec 010)
+
+Automated preflight checks before server startup with degraded mode fallback for non-critical failures.
+
+### Key Features
+
+- **Preflight Checks**: Memory budget, wired memory limit, disk space, and dependency integrity
+- **Degraded Mode**: Automatic fallback with reduced capabilities when non-critical checks fail
+- **Just Recipes**: Easy-to-use commands for preflight validation:
+  - `just preflight [MODEL_PATH]` - Run preflight checks (may query model registry)
+  - `just preflight-offline [MODEL_PATH]` - Run offline preflight checks (no network calls)
+  - `just preflight-status [MODEL_PATH]` - Show human-readable preflight status
+- **Health Endpoint**: Preflight status available via `/health` endpoint
+- **Admin GUI**: Degraded mode warning banner with disabled features and fallback config
+
+### Quick Start
+
+1. Run preflight checks for your model:
+   ```bash
+   just preflight /path/to/model
+   ```
+
+2. Run offline preflight checks (no network):
+   ```bash
+   just preflight-offline /path/to/model
+   ```
+
+3. Start server with preflight validation:
+   ```bash
+   just server-start
+   ```
+   - Critical failures will block startup with remediation messages
+   - Non-critical failures trigger degraded mode with reduced capabilities
+
+4. Check preflight status:
+   ```bash
+   just preflight-status /path/to/model
+   ```
+
+### Degraded Mode Behavior
+
+When non-critical preflight checks fail (e.g., missing TurboQuant), the system enters degraded mode:
+- **Disabled Features**: TurboQuant, KV cache compression, advanced profiling
+- **Fallback Quantization**: 4bit-standard (configurable in `scripts/wrapper-config/preflight-config.yaml`)
+- **Fallback Profile**: 120b-balanced (safe default for 120B+ models)
+
+For detailed documentation, see:
+- [Startup Preflight Specification](specs/010-offline-002-startup/spec.md)
+- [Startup Preflight Plan](specs/010-offline-002-startup/plan.md)
+- [Preflight Interface Contract](specs/010-offline-002-startup/contracts/preflight-interface.md)
+
 ## Quick Start
 
 ```bash
@@ -192,6 +288,9 @@ just mlx-status
 
 # Stop the server
 just mlx-stop
+
+# Start Admin GUI (http://localhost:3000)
+just admin-gui
 ```
 
 ### Server Lifecycle Management

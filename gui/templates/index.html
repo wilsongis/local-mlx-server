@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - MLX Server Admin{% endblock %}
+
+{% block head %}
+<meta http-equiv="refresh" content="10">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="status-card">
+        <h2>Server Status</h2>
+        <div id="status-indicator" class="status {{ server_status }}">
+            <span class="status-dot"></span>
+            <span class="status-text">{{ server_status | upper }}</span>
+        </div>
+        <p class="last-checked">
+            <small>Last checked: {{ last_checked }}</small>
+        </p>
+    </div>
+    
+    {% if model_info %}
+    <div class="model-card">
+        <h2>Model Information</h2>
+        <p><strong>Model:</strong> {{ model_info }}</p>
+        {% if model_quantization %}
+        <p><strong>Quantization:</strong> {{ model_quantization }}</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="model-card">
+        <h2>Model Information</h2>
+        <p class="no-model">No model loaded</p>
+    </div>
+    {% endif %}
+    
+    {% if error %}
+    <div class="error-card">
+        <h3>Error</h3>
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+    
+    {% if degraded_mode_active %}
+    <div class="degraded-warning-card">
+        <h3>⚠️ DEGRADED MODE ACTIVE</h3>
+        <p>The server is running with reduced capabilities:</p>
+        <ul>
+            {% for feature in degraded_disabled_features %}
+            <li>{{ feature }}</li>
+            {% endfor %}
+        </ul>
+        {% if degraded_fallback_quantization %}
+        <p><strong>Fallback Quantization:</strong> {{ degraded_fallback_quantization }}</p>
+        {% endif %}
+        {% if degraded_fallback_profile %}
+        <p><strong>Fallback Profile:</strong> {{ degraded_fallback_profile }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="controls-card">
+        <h2>Server Controls</h2>
+        <button id="start-btn" class="btn btn-start" onclick="startServer()">Start Server</button>
+        <button id="stop-btn" class="btn btn-stop" onclick="stopServer()">Stop Server</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

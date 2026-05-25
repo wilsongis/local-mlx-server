@@ -1,0 +1,35 @@
+# Preflight configuration for local MLX server
+# Documentation: specs/010-offline-002-startup/
+
+# Memory thresholds (in GB)
+memory:
+  critical_120b: 48      # Minimum for TurboQuant 120B+
+  standard_120b: 64      # Minimum for standard 4-bit 120B
+  warning_threshold: 56   # Warning below this
+  wired_limit: 12         # Max wired memory (GB)
+
+# Disk space (in GB)
+disk:
+  min_required: 50
+  check_path: "."         # Path to check
+
+# Dependency checks
+dependencies:
+  mlx_lm_min_version: "0.19.0"
+  check_turboquant: true   # non-critical
+  check_kv_cache: true     # non-critical
+
+# Profile fallback chain (in priority order)
+profile_fallback:
+  - "user_specified"
+  - "model_detected"
+  - "memory_based"
+  - "120b-balanced"        # Safe default
+
+# Degraded mode configuration
+degraded_mode:
+  disabled_features:
+    - "turboquant"
+    - "kv_cache_compression"
+    - "advanced_profiling"
+  fallback_quantization: "4bit-standard"

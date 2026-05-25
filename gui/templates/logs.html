@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - MLX Server Admin{% endblock %}
+
+{% block content %}
+<div class="logs-page">
+    <h2>Server Logs</h2>
+    
+    {% if not server_running %}
+    <div class="warning-card">
+        <p>⚠️ Server is not running. Start the server to view live logs.</p>
+    </div>
+    {% endif %}
+    
+    <div class="logs-controls">
+        <button class="btn btn-refresh" onclick="location.reload()">Refresh Logs</button>
+    </div>
+    
+    <div class="logs-container">
+        {% if log_entries %}
+            {% for entry in log_entries %}
+            <div class="log-entry log-{{ entry.level }}">
+                {% if entry.timestamp %}
+                <span class="log-timestamp">{{ entry.timestamp }}</span>
+                {% endif %}
+                <span class="log-level">[{{ entry.level | upper }}]</span>
+                <span class="log-source">[{{ entry.source }}]</span>
+                <span class="log-message">{{ entry.message }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-logs">
+                <p>No log entries available yet.</p>
+                <p class="hint">Logs will appear here once the server is running and generating output.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-scroll to bottom of logs on page load
+window.addEventListener('load', () => {
+    const container = document.querySelector('.logs-container');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+});
+</script>
+{% endblock %}

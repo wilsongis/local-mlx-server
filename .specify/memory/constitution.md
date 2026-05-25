@@ -1,7 +1,7 @@
 <!--
 ## Sync Impact Report
 
-**Version change**: 2.0.0 → 2.0.0 (no change - constitution already current)
+**Version change**: 2.0.0 → 2.1.0 (updated to match GOVERNANCE.md)
 
 **Modified principles**: None
 
@@ -17,9 +17,9 @@
 
 **Follow-up TODOs**: None
 
-**Verification date**: 2026-05-04
+**Verification date**: 2026-05-24
 
-**Notes**: Constitution already fully populated with 5 principles aligned to AGENTS.md and README. No placeholders remain. All governance dates present. Version 2.0.0 ratified 2026-03-06, last amended 2026-05-04.
+**Notes**: Constitution updated to version 2.1.0 to match GOVERNANCE.md. All principles remain aligned to AGENTS.md and README. No placeholders remain. Version 2.1.0 ratified 2026-03-06, last amended 2026-05-24. Admin GUI MVP (ADMIN-001) completed and reflected in project artifacts.
 -->
 
 # Local MLX Server Constitution
@@ -56,4 +56,4 @@ Edits should be minimal, reversible, and validated. Prefer incremental updates o
 
 This constitution and `AGENTS.md` govern project behavior. Any policy change that affects repository scope, runtime interface, or serving guarantees must update these documents together.
 
-**Version**: 2.0.0 | **Ratified**: 2026-03-06 | **Last Amended**: 2026-05-04
+**Version**: 2.1.0 | **Ratified**: 2026-03-06 | **Last Amended**: 2026-05-24

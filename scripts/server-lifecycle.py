@@ -190,6 +190,77 @@ class ServerLifecycleManager:
             return {"healthy": False, "status": "unreachable", "response": str(e)}
 
     # ------------------------------------------------------------------
+    # Preflight Check Integration (T013, T014, T019)
+    # ------------------------------------------------------------------
+
+    def run_preflight_checks(
+        self, model_path: str
+    ) -> tuple[bool, Optional[Any]]:
+        """
+        Run preflight checks before server startup.
+
+        Args:
+            model_path: Path to the model directory
+
+        Returns:
+            Tuple of (should_block: bool, preflight_result: Optional[PreflightResult])
+        """
+        try:
+            from scripts.preflight.checker import PreflightChecker
+
+            logger.info(f"Running preflight checks for model: {model_path}")
+            checker = PreflightChecker(model_path)
+            result = checker.run_all_checks()
+
+            if checker.should_block_startup():
+                logger.error("=" * 60)
+                logger.error("STARTUP BLOCKED due to critical preflight failures!")
+                logger.error("=" * 60)
+                for check in result.checks:
+                    if check.status == "fail" and check.check_type == "critical":
+                        logger.error(
+                            f"  [CRITICAL] {check.name}: {check.details}"
+                        )
+                        if check.error_code:
+                            logger.error(f"    Error Code: {check.error_code}")
+                            self._log_suggested_fix(check.error_code)
+                logger.error("=" * 60)
+                logger.error("Fix the above issues or use --force to bypass checks")
+                logger.error("=" * 60)
+                return True, result
+
+            if checker.should_enter_degraded_mode():
+                logger.warning("=" * 60)
+                logger.warning("ENTERING DEGRADED MODE due to non-critical failures")
+                logger.warning("=" * 60)
+                for check in result.checks:
+                    if check.status == "fail" and check.check_type == "non_critical":
+                        logger.warning(
+                            f"  [NON-CRITICAL] {check.name}: {check.details}"
+                        )
+                logger.warning("Server will start with reduced capabilities")
+                logger.warning("=" * 60)
+
+            return False, result
+
+        except Exception as e:
+            logger.error(f"Preflight checks failed to run: {e}")
+            logger.warning("Proceeding with startup (preflight checks unavailable)")
+            return False, None
+
+    def _log_suggested_fix(self, error_code: str) -> None:
+        """Log suggested fixes based on error code."""
+        fixes = {
+            "ERR-MEM-001": "Free up memory or use a smaller model. Consider closing other applications.",
+            "ERR-MEM-002": "Install psutil: uv pip install psutil",
+            "ERR-MEM-005": "Reduce wired memory usage. Restart may be required.",
+            "ERR-DISK-001": "Free up disk space. Need at least 50GB free for model operation.",
+            "ERR-DEP-001": "Install missing dependencies: uv pip install mlx-lm psutil",
+        }
+        fix = fixes.get(error_code, "Check the error details above.")
+        logger.error(f"  Suggested fix: {fix}")
+
+    # ------------------------------------------------------------------
     # Server Start (T007-T010)
     # ------------------------------------------------------------------
 
@@ -200,6 +271,8 @@ class ServerLifecycleManager:
         host: str = "127.0.0.1",
         extra_args: Optional[list] = None,
         kv_cache_config: Optional[dict] = None,
+        skip_preflight: bool = False,
+        degraded_config: Optional[Any] = None,
     ) -> bool:
         """
         Start MLX server with PID management.
@@ -241,6 +314,28 @@ class ServerLifecycleManager:
                 logger.error("Use 'just model-use <profile>' to set an active model.")
                 return False
 
+        # Run preflight checks unless skipped
+        if not skip_preflight and degraded_config is None:
+            should_block, preflight_result = self.run_preflight_checks(model_path)
+            if should_block:
+                return False
+            # Check if we should enter degraded mode
+            if not should_block:
+                from scripts.preflight.checker import PreflightChecker
+                checker = PreflightChecker(model_path)
+                if checker.should_enter_degraded_mode():
+                    degraded_config = checker.get_degraded_config()
+                    if degraded_config:
+                        logger.warning("=" * 60)
+                        logger.warning("STARTING SERVER IN DEGRADED MODE")
+                        logger.warning("=" * 60)
+                        logger.warning(f"Disabled features: {', '.join(degraded_config.disabled_features)}")
+                        logger.warning(f"Fallback quantization: {degraded_config.fallback_quantization}")
+                        logger.warning(f"Fallback profile: {degraded_config.fallback_profile}")
+                        for warning in degraded_config.warnings:
+                            logger.warning(f"  Warning: {warning}")
+                        logger.warning("=" * 60)
+
         # Check for existing PID file
         pid, is_valid = self.validate_pid_file()
         if is_valid:
@@ -272,6 +367,25 @@ class ServerLifecycleManager:
 
         # Set environment variables for KV cache compression
         env = os.environ.copy()
+
+        # Apply degraded mode settings if applicable
+        if degraded_config and degraded_config.enabled:
+            logger.warning("Applying degraded mode settings...")
+            # Disable features based on degraded config
+            if "turboquant" in degraded_config.disabled_features:
+                env["TURBOQUANT_DISABLED"] = "true"
+                logger.warning("  TurboQuant disabled")
+            if "kv_cache_compression" in degraded_config.disabled_features:
+                env["KV_CACHE_ENABLED"] = "false"
+                logger.warning("  KV cache compression disabled")
+            if "advanced_profiling" in degraded_config.disabled_features:
+                env["ADVANCED_PROFILING_DISABLED"] = "true"
+                logger.warning("  Advanced profiling disabled")
+            # Set fallback quantization
+            env["FALLBACK_QUANTIZATION"] = degraded_config.fallback_quantization
+            env["FALLBACK_PROFILE"] = degraded_config.fallback_profile
+            logger.warning(f"  Fallback quantization: {degraded_config.fallback_quantization}")
+            logger.warning(f"  Fallback profile: {degraded_config.fallback_profile}")
 
         if kv_cache_config:
             from scripts.quantization.quantization_manager import QuantizationManager

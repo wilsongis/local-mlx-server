@@ -15,6 +15,54 @@ sys.path.insert(0, project_root)
 
 def main():
     """Apply KV cache compression patch and start mlx_lm.server."""
+    # Get model path from command line args or environment
+    import sys
+    model_path = os.environ.get("MODEL_PATH", "")
+    if len(sys.argv) > 1 and sys.argv[1] == "--model" and len(sys.argv) > 2:
+        model_path = sys.argv[2]
+
+    # Run preflight checks unless skipped
+    skip_preflight = os.environ.get("SKIP_PREFLIGHT", "false").lower() == "true"
+    if model_path and not skip_preflight:
+        try:
+            from scripts.preflight.checker import PreflightChecker
+            print(f"[Preflight] Running preflight checks for model: {model_path}")
+            checker = PreflightChecker(model_path)
+            result = checker.run_all_checks()
+
+            if checker.should_block_startup():
+                print("=" * 60)
+                print("STARTUP BLOCKED due to critical preflight failures!")
+                print("=" * 60)
+                for check in result.checks:
+                    if check.status == "fail" and check.check_type == "critical":
+                        print(f"  [CRITICAL] {check.name}: {check.details}")
+                print("=" * 60)
+                print("Fix the above issues before starting the server.")
+                print("=" * 60)
+                sys.exit(1)
+
+            if checker.should_enter_degraded_mode():
+                print("=" * 60)
+                print("ENTERING DEGRADED MODE due to non-critical failures")
+                print("=" * 60)
+                # Get degraded config and set environment variables
+                degraded_config = checker.get_degraded_config()
+                if degraded_config:
+                    print(f"Disabled features: {', '.join(degraded_config.disabled_features)}")
+                    print(f"Fallback quantization: {degraded_config.fallback_quantization}")
+                    # Set environment variables to disable features
+                    if "turboquant" in degraded_config.disabled_features:
+                        os.environ["TURBOQUANT_DISABLED"] = "true"
+                    if "kv_cache_compression" in degraded_config.disabled_features:
+                        os.environ["KV_CACHE_ENABLED"] = "false"
+                print("Server will start with reduced capabilities")
+                print("=" * 60)
+
+        except Exception as e:
+            print(f"[Preflight] Warning: Preflight checks failed to run: {e}")
+            print("[Preflight] Proceeding with startup...")
+
     # Get KV cache config from environment variables
     kv_profile = os.environ.get("KV_CACHE_PROFILE", "auto")
     kv_bits = int(os.environ.get("KV_CACHE_BITS", "3"))

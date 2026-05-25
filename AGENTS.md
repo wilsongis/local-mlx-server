@@ -58,7 +58,7 @@ When making changes:
 - Document operational rationale for inference-related parameter changes.
 - Validate that startup and serving flows remain functional after dependency updates.
 - When introducing new operational actions, add or update `just` recipes first instead of adding manual command instructions.
-- If a web UI is requested, keep it in a separate repository or directory boundary and have it call this repo's `just` commands.
+- The Admin GUI already exists in the `gui/` directory - maintain and improve it using the existing services layer (`gui/services/`) that calls `just` commands. Do not create alternative GUI implementations.
 
 ## 5. Definition of Done for Agent Tasks
 
@@ -75,3 +75,4 @@ A task is complete only when:
 - [Operations Guide](OPERATIONS.md) - Server operations and `just` recipes
 - [Governance](GOVERNANCE.md) - Project constitution, repository boundaries, and completion criteria
 - [Contributing](CONTRIBUTING.md) - Contribution guidelines and development workflow
+- [Admin GUI Spec](specs/009-admin-gui-mvp/spec.md) - GUI specification and implementation details

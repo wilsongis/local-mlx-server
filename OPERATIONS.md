@@ -43,6 +43,7 @@ This section documents all `just` recipes with command syntax, required argument
 | `just kv-disable` | Disable KV cache compression | [kv-disable](#kv-disable) |
 | `just kv-list-profiles` | List available KV cache profiles | [kv-list-profiles](#kv-list-profiles) |
 | `just kv-validate` | Validate KV cache profile configuration | [kv-validate](#kv-validate) |
+| `just admin-gui` | Start Admin GUI on http://localhost:3000 | [admin-gui](#admin-gui) |
 
 ---
 
@@ -1115,6 +1116,287 @@ Use 'just model-use <profile>' to activate a profile.
 
 ---
 
+## Startup Preflight & Degraded Mode (Spec 010)
+
+Automated preflight checks run before server startup to validate system readiness. Critical failures block startup; non-critical failures trigger degraded mode with reduced capabilities.
+
+### Overview
+
+The preflight system checks:
+- **Memory budget**: Available unified memory vs. model requirements (48GB for 120B+ with TurboQuant, 64GB for standard 4-bit)
+- **Wired memory limit**: macOS wired memory usage (default limit: 12GB)
+- **Disk space**: Available disk space for model operations (minimum: 50GB)
+- **Dependency integrity**: mlx_lm version, TurboQuant availability, KV cache compression support
+
+### Decision Logic
+
+| Check Result | Action |
+|--------------|--------|
+| All checks pass | Start server normally |
+| Critical check fails | Block startup, show remediation messages |
+| Non-critical check fails | Enter degraded mode, disable features, warn user |
+
+### Degraded Mode
+
+When non-critical checks fail (e.g., TurboQuant missing), the system:
+- Disables: TurboQuant, KV cache compression, advanced profiling
+- Falls back to: 4bit-standard quantization
+- Uses: Safe default profile (120b-balanced)
+
+---
+
+### preflight
+
+**Description**: Run preflight checks before server startup (may query model registry for online detection).
+
+**Syntax**:
+```bash
+just preflight [MODEL_PATH]
+```
+
+**Parameters**:
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `MODEL_PATH` | string | No | Path to model directory (default: `./models`) |
+
+**Environment Variables**:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_PATH` | `./models` | Model directory to check |
+
+**Examples**:
+```bash
+# Run with default model path
+$ just preflight
+Running preflight checks for model: ./models...
+{
+  "overall_status": "ready",
+  "checks": [
+    {"name": "memory_budget", "status": "pass", "details": "64.0GB available (48GB required)"},
+    {"name": "wired_limit", "status": "pass", "details": "8GB wired (within 12GB limit)"},
+    {"name": "disk_space", "status": "pass", "details": "100GB available (50GB required)"},
+    {"name": "dependencies", "status": "pass", "details": "mlx_lm 0.19.0, TurboQuant available"}
+  ],
+  "block_startup": false,
+  "degraded_mode": false
+}
+
+# Run with specific model path
+$ just preflight /path/to/nemotron-120b
+```
+
+**Edge Cases**:
+- **Model path not found**: Check fails with "Model path not found"
+- **Critical failure**: Returns `overall_status: "blocked"`, `block_startup: true`
+- **Non-critical failure**: Returns `overall_status: "degraded"`, `degraded_mode: true`
+
+---
+
+### preflight-offline
+
+**Description**: Run preflight checks using cached/offline model detection (no network calls).
+
+**Syntax**:
+```bash
+just preflight-offline [MODEL_PATH]
+```
+
+**Examples**:
+```bash
+# Run offline preflight
+$ just preflight-offline
+Running offline preflight checks for model: ./models...
+(Using cached model detection, no network calls)
+{
+  "overall_status": "ready",
+  "checks": [...]
+}
+```
+
+**Edge Cases**:
+- **Same as `preflight`** but skips online model registry queries
+- **Faster execution** when network is unavailable
+
+---
+
+### preflight-status
+
+**Description**: Show human-readable preflight status.
+
+**Syntax**:
+```bash
+just preflight-status [MODEL_PATH]
+```
+
+**Examples**:
+```bash
+$ just preflight-status
+=== Preflight Check Status ===
+Overall Status: ready
+Block Startup: False
+Degraded Mode: False
+  [CRITICAL] memory_budget: pass - 64.0GB available (48GB required)
+  [CRITICAL] wired_limit: pass - 8GB wired (within 12GB limit)
+  [CRITICAL] disk_space: pass - 100GB available (50GB required)
+  [NON_CRITICAL] dependencies: pass - mlx_lm 0.19.0, TurboQuant available
+  [NON_CRITICAL] profile_fallback: pass - Using '120b-balanced' profile
+```
+
+---
+
+### Integration with Server Startup
+
+Preflight checks run automatically when using `just server-start`:
+
+```bash
+$ just server-start
+Running preflight checks...
+✓ Memory budget: 64GB available
+✓ Wired memory limit: 8GB
+✓ Disk space: 100GB available
+✓ Dependencies: All present
+✓ Profile fallback: 120b-balanced
+Result: READY - Starting server...
+```
+
+If critical checks fail:
+```bash
+Running preflight checks...
+✓ Memory budget: 64GB available
+✗ Wired memory limit: 15GB (exceeds 12GB limit) - CRITICAL
+✗ Dependencies: mlx_lm not found - CRITICAL
+
+ERROR: Critical preflight checks failed. Server startup blocked.
+Fix the issues above and try again.
+```
+
+If non-critical checks fail (degraded mode):
+```bash
+Running preflight checks...
+✓ Memory budget: 64GB available
+✓ Wired memory limit: 8GB
+✓ Disk space: 100GB available
+✗ TurboQuant: Not available (optional)
+✗ KV cache compression: Not available (optional)
+
+WARNING: Entering degraded mode.
+Disabled features: TurboQuant, KV cache compression
+Server starting with standard 4-bit quantization...
+```
+
+---
+
+### Health Endpoint
+
+Preflight status is available via the `/health` endpoint:
+
+```bash
+# Standard health check includes preflight status
+curl http://127.0.0.1:8000/health | jq '.preflight, .degraded_mode'
+
+# Dedicated preflight status endpoint
+curl http://127.0.0.1:8000/health/preflight
+```
+
+Expected output (degraded mode):
+```json
+{
+  "preflight": {
+    "last_check": "2026-05-24T18:00:00Z",
+    "overall_status": "degraded",
+    "checks": [
+      {"name": "memory_budget", "status": "pass", "type": "critical"},
+      {"name": "turboquant", "status": "fail", "type": "non_critical"}
+    ]
+  },
+  "degraded_mode": {
+    "active": true,
+    "disabled_features": ["turboquant", "kv_cache_compression"],
+    "fallback_quantization": "4bit-standard",
+    "fallback_profile": "120b-balanced"
+  }
+}
+```
+
+---
+
+### Troubleshooting Preflight Issues
+
+#### Critical Failure: Insufficient Memory
+
+**Symptom**: Preflight blocks startup with "INSUFFICIENT MEMORY"
+
+**Resolution**:
+1. Close memory-intensive applications
+2. Use a lower memory profile: `just model-use <lower-profile>`
+3. Enable KV cache compression: `just kv-enable auto`
+4. Check actual memory: `system_profiler SPHardwareDataType | grep "Memory:"`
+
+#### Critical Failure: Wired Memory Limit Exceeded
+
+**Symptom**: Preflight blocks startup with "Wired memory exceeds limit"
+
+**Resolution**:
+1. Restart system to clear wired memory
+2. Close applications with high wired memory usage
+3. Adjust limit in `scripts/wrapper-config/preflight-config.yaml`: `wired_limit: 16`
+4. Check wired memory: `top -l 1 -s 0 | grep "wired"`
+
+#### Non-Critical Failure: TurboQuant Missing (Degraded Mode)
+
+**Symptom**: Server starts in degraded mode, TurboQuant disabled
+
+**Resolution** (to exit degraded mode):
+1. Install TurboQuant: `uv pip install turboquant-mlx-full`
+2. Verify installation: `uv run python -c "import turboquant_mlx"`
+3. Re-run preflight: `just preflight`
+4. Restart server: `just server-stop && just server-start`
+
+#### Non-Critical Failure: KV Cache Compression Unavailable
+
+**Symptom**: Server starts in degraded mode, KV cache compression disabled
+
+**Resolution**:
+1. Install TurboQuant (includes KV cache compression)
+2. Or disable KV cache check in `preflight-config.yaml`: `check_kv_cache: false`
+3. Restart server to apply changes
+
+---
+
+### Configuration
+
+Edit `scripts/wrapper-config/preflight-config.yaml` to adjust thresholds:
+
+```yaml
+# Memory thresholds (in GB)
+memory:
+  critical_120b: 48      # Minimum for TurboQuant 120B+
+  standard_120b: 64      # Minimum for standard 4-bit 120B
+  warning_threshold: 56   # Warning below this
+  wired_limit: 12         # Max wired memory (GB)
+
+# Disk space (in GB)
+disk:
+  min_required: 50
+  check_path: "."         # Path to check
+
+# Dependency checks
+dependencies:
+  mlx_lm_min_version: "0.19.0"
+  check_turboquant: true   # non-critical
+  check_kv_cache: true     # non-critical
+
+# Degraded mode configuration
+degraded_mode:
+  disabled_features:
+    - "turboquant"
+    - "kv_cache_compression"
+    - "advanced_profiling"
+  fallback_quantization: "4bit-standard"
+```
+
+---
+
 ## Troubleshooting Guide
 
 This section covers common operational issues and their resolutions.
@@ -1572,3 +1854,70 @@ The health endpoint (`/health`) now includes quantization status:
   }
 }
 ```
+
+## Admin GUI MVP (Spec 009)
+
+The Admin GUI provides a web-based interface for server visibility and control, accessible at http://localhost:3000 after starting the GUI.
+
+### Starting the Admin GUI
+
+**Recipe**: `just admin-gui`
+
+**Description**: Start the Flask-based Admin GUI on http://localhost:3000.
+
+**Syntax**:
+```bash
+just admin-gui
+```
+
+**Examples**:
+```bash
+# Start the Admin GUI
+$ just admin-gui
+Starting Admin GUI on http://localhost:3000...
+ * Running on http://localhost:3000
+```
+
+**Edge Cases**:
+- **Port 3000 in use**: Change the port in `gui/app.py` or stop the conflicting service.
+- **Dependencies missing**: Run `just init` to install the Flask dependency.
+
+---
+
+### GUI Features
+
+The Admin GUI provides:
+
+1. **Server Status Dashboard**: Running state, active model, uptime, memory usage
+2. **Model Management View**: Available models, active model, quantization profiles
+3. **Basic Controls**: Start/stop/restart server via `just` recipes
+4. **Health Display**: Last health check result, endpoint responsiveness
+5. **Log Viewer**: Real-time server log viewing with auto-refresh
+
+### Architecture
+
+The GUI follows the project's governance rules by living in a separate `gui/` directory and calling `just` commands via a backend services layer:
+
+- `gui/app.py` - Flask application entry point
+- `gui/services/server_control.py` - Server start/stop/status via `just` recipes
+- `gui/services/models.py` - Model profile management
+- `gui/services/status_monitor.py` - Health and status monitoring
+- `gui/services/log_reader.py` - Server log reading
+- `gui/templates/` - Jinja2 HTML templates
+- `gui/static/` - CSS and JavaScript assets
+
+### Using the GUI
+
+1. Start the GUI: `just admin-gui`
+2. Access the web interface at http://localhost:3000
+3. Use the dashboard to:
+   - View server status and health
+   - Switch between available model profiles
+   - Start/stop the server with one click
+   - Monitor logs in real-time
+
+For detailed documentation, see:
+- [Admin GUI Specification](specs/009-admin-gui-mvp/spec.md)
+- [Admin GUI Plan](specs/009-admin-gui-mvp/plan.md)
+- [HTTP Endpoints Contract](specs/009-admin-gui-mvp/contracts/http-endpoints.md)
+- [Just Command Interface Contract](specs/009-admin-gui-mvp/contracts/just-command-interface.md)

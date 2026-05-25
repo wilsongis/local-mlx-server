@@ -152,7 +152,28 @@ For inference infrastructure projects, documentation must address:
 
 This constitution and `AGENTS.md` govern project behavior. Any policy change that affects repository scope, runtime interface, or serving guarantees must update these documents together.
 
-**Version**: 2.0.0 | **Ratified**: 2026-03-06 | **Last Amended**: 2026-05-04
+**Version**: 2.1.0 | **Ratified**: 2026-03-06 | **Last Amended**: 2026-05-24
+
+## Project Status Summary
+
+### Completed Infrastructure Components
+
+- **MLX Server Wrapper** (INFRA-001): CLI interface with profile selection and health monitoring
+- **Server Lifecycle Management** (INFRA-002): PID management, port conflict detection, graceful shutdown
+- **Model Management** (INFRA-003): Profile registry with validation and state management
+- **Per-Path Hybrid Quantization** (QUANT-001): Attention/expert bit allocation with Lloyd-Max calibration
+- **KV Cache Compression** (QUANT-002): V2/V3 compression paths with 3-5x memory reduction
+- **Admin GUI MVP** (ADMIN-001): Flask-based web interface at http://localhost:3000
+
+### Current Capabilities
+
+The repository now provides a complete local inference infrastructure stack for 120B+ models on Apple Silicon, including:
+- OpenAI-compatible API via `mlx_lm.server`
+- Web-based visibility and control via Admin GUI
+- Per-path hybrid quantization for memory optimization
+- KV cache compression for long-context inference
+- Model profile management with validation
+- Server lifecycle management with health monitoring
 
 ## Related Documentation
 
@@ -160,3 +181,4 @@ This constitution and `AGENTS.md` govern project behavior. Any policy change tha
 - [Operations Guide](OPERATIONS.md) - Server operations and `just` recipes
 - [Agent Rules](AGENTS.md) - Operational charter for AI agents
 - [Contributing](CONTRIBUTING.md) - Contribution guidelines and development workflow
+- [Admin GUI Spec](specs/009-admin-gui-mvp/spec.md) - GUI specification and implementation details
